@@ -50,6 +50,14 @@ BACKEND_URL=http://YOUR_MAC_IP:5000 ./scripts/run_mobile.sh
 BACKEND_URL=https://your-app.railway.app ./scripts/build_apk.sh
 ```
 
+If your Mac cannot install Flutter, use GitHub Actions instead:
+
+1. Push this repo to GitHub.
+2. Open the `Flutter CI` workflow.
+3. Click `Run workflow`.
+4. Enter your backend URL.
+5. Download the `bulker-release-apk` artifact.
+
 The APK will be generated at:
 
 ```text

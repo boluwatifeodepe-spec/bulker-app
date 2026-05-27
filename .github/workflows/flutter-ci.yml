@@ -1,0 +1,67 @@
+name: Flutter CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: "Backend URL for the app build"
+        required: true
+        default: "https://your-backend-url.railway.app"
+  push:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/flutter-ci.yml"
+
+jobs:
+  analyze-and-build-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.5"
+          channel: stable
+          cache: true
+
+      - name: Create platform folders
+        run: flutter create . --platforms android
+
+      - name: Configure Android package
+        run: |
+          perl -0pi -e 's/applicationId = ".*?"/applicationId = "com.bulker.app"/' android/app/build.gradle
+          perl -0pi -e 's/namespace = ".*?"/namespace = "com.bulker.app"/' android/app/build.gradle
+          if ! grep -q "android.permission.INTERNET" android/app/src/main/AndroidManifest.xml; then
+            perl -0pi -e 's/<manifest([^>]*)>/<manifest$1>\\n    <uses-permission android:name="android.permission.INTERNET"\\/>/' android/app/src/main/AndroidManifest.xml
+          fi
+
+      - name: Restore Firebase Android file
+        if: ${{ secrets.GOOGLE_SERVICES_JSON_B64 != '' }}
+        run: |
+          mkdir -p android/app
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 --decode > android/app/google-services.json
+          perl -0pi -e 's/(plugins \\{)/$1\\n    id "com.google.gms.google-services" version "4.4.2" apply false/' android/settings.gradle
+          perl -0pi -e 's/(plugins \\{)/$1\\n    id "com.google.gms.google-services"/' android/app/build.gradle
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build APK
+        run: flutter build apk --release --dart-define=BACKEND_URL="${{ github.event.inputs.backend_url || 'https://your-backend-url.railway.app' }}"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bulker-release-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
