@@ -1,0 +1,13 @@
+.DS_Store
+.env
+node_modules/
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/.wwebjs_auth/
+backend/.wwebjs_cache/
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/android/app/google-services.json
+mobile/ios/Runner/GoogleService-Info.plist

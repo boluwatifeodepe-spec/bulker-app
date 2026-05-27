@@ -1,0 +1,11 @@
+.git
+.DS_Store
+backend/node_modules
+backend/.wwebjs_auth
+backend/.wwebjs_cache
+backend/uploads/*
+!backend/uploads/.gitkeep
+mobile/.dart_tool
+mobile/build
+mobile/android
+mobile/ios
