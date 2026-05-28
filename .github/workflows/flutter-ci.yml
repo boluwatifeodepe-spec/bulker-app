@@ -1,4 +1,4 @@
-name: Flutter CI
+name: Flutter APK Build
 
 on:
   workflow_dispatch:
@@ -39,14 +39,6 @@ jobs:
           if ! grep -q "android.permission.INTERNET" android/app/src/main/AndroidManifest.xml; then
             perl -0pi -e 's/<manifest([^>]*)>/<manifest$1>\\n    <uses-permission android:name="android.permission.INTERNET"\\/>/' android/app/src/main/AndroidManifest.xml
           fi
-
-      - name: Restore Firebase Android file
-        if: ${{ secrets.GOOGLE_SERVICES_JSON_B64 != '' }}
-        run: |
-          mkdir -p android/app
-          echo "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 --decode > android/app/google-services.json
-          perl -0pi -e 's/(plugins \\{)/$1\\n    id "com.google.gms.google-services" version "4.4.2" apply false/' android/settings.gradle
-          perl -0pi -e 's/(plugins \\{)/$1\\n    id "com.google.gms.google-services"/' android/app/build.gradle
 
       - name: Install dependencies
         run: flutter pub get
