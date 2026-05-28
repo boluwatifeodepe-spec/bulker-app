@@ -38,9 +38,14 @@ jobs:
       - name: Use Android SDK 35
         run: |
           mkdir -p android/app/src/main/res/drawable
+          mkdir -p android/app/src/main/res/mipmap-anydpi-v26
           cp android_assets/ic_launcher.xml android/app/src/main/res/drawable/ic_launcher.xml
-          perl -0pi -e 's/android:icon="@mipmap\/ic_launcher"/android:icon="@drawable\/ic_launcher"/' android/app/src/main/AndroidManifest.xml
-          perl -0pi -e 's/android:roundIcon="@mipmap\/ic_launcher"/android:roundIcon="@drawable\/ic_launcher"/' android/app/src/main/AndroidManifest.xml
+          cp android_assets/ic_launcher_background.xml android/app/src/main/res/drawable/ic_launcher_background.xml
+          cp android_assets/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml
+          cp android_assets/ic_launcher_adaptive.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          cp android_assets/ic_launcher_adaptive.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+          perl -0pi -e 's/android:icon="@mipmap\/ic_launcher"/android:icon="@mipmap\/ic_launcher"/' android/app/src/main/AndroidManifest.xml
+          perl -0pi -e 's/android:roundIcon="@mipmap\/ic_launcher"/android:roundIcon="@mipmap\/ic_launcher_round"/' android/app/src/main/AndroidManifest.xml
           if ! grep -q "android.permission.READ_CONTACTS" android/app/src/main/AndroidManifest.xml; then
             perl -0pi -e 's/<manifest([^>]*)>/<manifest$1>\n    <uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.READ_CONTACTS"\/>/' android/app/src/main/AndroidManifest.xml
           fi
@@ -61,7 +66,8 @@ jobs:
       - name: Build APK
         run: |
           set +e
-          flutter build apk --release --dart-define=BACKEND_URL="${{ github.event.inputs.backend_url || 'https://your-backend-url.railway.app' }}" 2>&1 | tee build.log
+          BACKEND_URL="${{ github.event.inputs.backend_url || vars.BULKER_BACKEND_URL || 'https://your-backend-url.railway.app' }}"
+          flutter build apk --release --dart-define=BACKEND_URL="$BACKEND_URL" 2>&1 | tee build.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
             {

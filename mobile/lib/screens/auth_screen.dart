@@ -10,6 +10,7 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   bool _signUp = false;
+  bool _showPassword = false;
 
   @override
   Widget build(BuildContext context) {
@@ -34,12 +35,18 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         const SizedBox(height: 14),
         TextField(
-          obscureText: true,
+          obscureText: !_showPassword,
           decoration: InputDecoration(
             labelText: 'Password',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             filled: true,
             fillColor: Colors.white,
+            suffixIcon: IconButton(
+              onPressed: () => setState(() => _showPassword = !_showPassword),
+              icon: Icon(
+                _showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 18),

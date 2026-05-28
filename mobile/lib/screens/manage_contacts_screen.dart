@@ -49,7 +49,7 @@ class ManageContactsScreen extends StatelessWidget {
                 icon: Icons.contacts_outlined,
                 onTap: state.importPhoneContacts,
               ),
-              if (state.lastError != null) ...[
+              if (state.contactError != null) ...[
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -58,7 +58,7 @@ class ManageContactsScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    state.lastError!,
+                    state.contactError!,
                     style: const TextStyle(
                       color: Color(0xFFB42318),
                       fontWeight: FontWeight.w800,

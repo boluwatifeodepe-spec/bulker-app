@@ -37,7 +37,8 @@ class BulkerState extends ChangeNotifier {
   String? pairingCode;
   String pairingStatus = 'STATUS: WAITING FOR INPUT...';
   String? lastError;
-  String appVersion = '1.0.3';
+  String? contactError;
+  String appVersion = '1.0.4';
   String profileName = 'Bulker User';
   String profilePhone = '';
   String? profilePhotoPath;
@@ -155,6 +156,8 @@ class BulkerState extends ChangeNotifier {
   }
 
   Future<void> importCsv() async {
+    contactError = null;
+    notifyListeners();
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['csv'],
@@ -183,7 +186,7 @@ class BulkerState extends ChangeNotifier {
   }
 
   Future<void> importPhoneContacts() async {
-    lastError = null;
+    contactError = null;
     notifyListeners();
     try {
       final picked = await phone_contacts.FlutterContacts.openExternalPick();
@@ -208,10 +211,10 @@ class BulkerState extends ChangeNotifier {
         imported++;
       }
       if (imported == 0) {
-        lastError = 'No new phone number found on that contact.';
+        contactError = 'No new phone number found on that contact.';
       }
     } catch (error) {
-      lastError = 'Could not open phone contacts. Allow Contacts permission and try again.';
+      contactError = 'Could not open phone contacts. Allow Contacts permission and try again.';
     }
     notifyListeners();
   }
