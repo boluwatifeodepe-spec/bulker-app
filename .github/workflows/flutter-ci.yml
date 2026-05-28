@@ -32,6 +32,18 @@ jobs:
       - name: Create platform folders
         run: flutter create . --platforms android
 
+      - name: Use Android SDK 35
+        run: |
+          yes | sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          if [ -f android/app/build.gradle ]; then
+            perl -0pi -e 's/compileSdk = flutter\.compileSdkVersion/compileSdk = 35/' android/app/build.gradle
+            perl -0pi -e 's/targetSdk = flutter\.targetSdkVersion/targetSdk = 35/' android/app/build.gradle
+          fi
+          if [ -f android/app/build.gradle.kts ]; then
+            perl -0pi -e 's/compileSdk = flutter\.compileSdkVersion/compileSdk = 35/' android/app/build.gradle.kts
+            perl -0pi -e 's/targetSdk = flutter\.targetSdkVersion/targetSdk = 35/' android/app/build.gradle.kts
+          fi
+
       - name: Install dependencies
         run: flutter pub get
 
