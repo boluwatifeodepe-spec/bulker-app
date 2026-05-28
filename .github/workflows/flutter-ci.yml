@@ -36,7 +36,20 @@ jobs:
         run: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --release --dart-define=BACKEND_URL="${{ github.event.inputs.backend_url || 'https://your-backend-url.railway.app' }}"
+        run: |
+          set +e
+          flutter build apk --release --dart-define=BACKEND_URL="${{ github.event.inputs.backend_url || 'https://your-backend-url.railway.app' }}" 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "APK build failed. Last build lines:"
+              tail -80 build.log
+            } > build-summary.txt
+            while IFS= read -r line; do
+              echo "::error::$line"
+            done < build-summary.txt
+            exit "$status"
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
