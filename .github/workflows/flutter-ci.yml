@@ -36,10 +36,12 @@ jobs:
         run: |
           if [ -f android/app/build.gradle ]; then
             perl -0pi -e 's/compileSdk = flutter\.compileSdkVersion/compileSdk = 35/' android/app/build.gradle
+            perl -0pi -e 's/minSdk = flutter\.minSdkVersion/minSdk = 23/' android/app/build.gradle
             perl -0pi -e 's/targetSdk = flutter\.targetSdkVersion/targetSdk = 35/' android/app/build.gradle
           fi
           if [ -f android/app/build.gradle.kts ]; then
             perl -0pi -e 's/compileSdk = flutter\.compileSdkVersion/compileSdk = 35/' android/app/build.gradle.kts
+            perl -0pi -e 's/minSdk = flutter\.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts
             perl -0pi -e 's/targetSdk = flutter\.targetSdkVersion/targetSdk = 35/' android/app/build.gradle.kts
           fi
 
