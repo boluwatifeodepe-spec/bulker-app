@@ -19,15 +19,34 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF05060F),
+    return Scaffold(
+      backgroundColor: const Color(0xFF05060F),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.qr_code_2_rounded, color: Color(0xFF6DF084), size: 58),
-            SizedBox(height: 14),
-            Text(
+            Container(
+              width: 76,
+              height: 76,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x5525D366), blurRadius: 22),
+                ],
+              ),
+              child: const Text(
+                'B',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 46,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
               'Bulker',
               style: TextStyle(
                 color: Colors.white,
@@ -35,8 +54,8 @@ class _SplashScreenState extends State<SplashScreen> {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            SizedBox(height: 18),
-            CircularProgressIndicator(color: Color(0xFF6DF084)),
+            const SizedBox(height: 18),
+            const CircularProgressIndicator(color: Color(0xFF6DF084)),
           ],
         ),
       ),

@@ -13,6 +13,25 @@ class ApiService {
 
   Uri _uri(String path) => Uri.parse('${AppConstants.backendUrl}$path');
 
+  String _messageFromResponse(http.Response response, String fallback) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['error'] != null) {
+        return decoded['error'].toString();
+      }
+      if (decoded is Map && decoded['message'] != null) {
+        return decoded['message'].toString();
+      }
+    } catch (_) {}
+    if (response.statusCode == 404) {
+      return 'Backend route not found. Check that the Railway backend is deployed and connected.';
+    }
+    if (response.body.trim().isNotEmpty && response.body.length < 120) {
+      return response.body.trim();
+    }
+    return fallback;
+  }
+
   Future<String> requestPairingCode(String phoneNumber) async {
     final response = await _client.post(
       _uri('/api/whatsapp/pairing-code'),
@@ -20,7 +39,7 @@ class ApiService {
       body: jsonEncode({'phoneNumber': phoneNumber}),
     );
     if (response.statusCode >= 400) {
-      throw Exception(jsonDecode(response.body)['error'] ?? 'Pairing failed');
+      throw Exception(_messageFromResponse(response, 'Pairing failed'));
     }
     return jsonDecode(response.body)['code'] as String;
   }

@@ -59,10 +59,6 @@ class _AuthScreenState extends State<AuthScreen> {
           onPressed: () => setState(() => _signUp = !_signUp),
           child: Text(_signUp ? 'Already have an account?' : 'Create a new account'),
         ),
-        TextButton(
-          onPressed: () => context.go('/'),
-          child: const Text('Continue with anonymous test account'),
-        ),
       ],
     );
   }

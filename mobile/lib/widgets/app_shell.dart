@@ -69,7 +69,23 @@ class _TopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.qr_code_2_rounded, size: 19, color: AppShell.ink),
+          Container(
+            width: 24,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFF25D366),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text(
+              'B',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
           const SizedBox(width: 8),
           const Text(
             'Bulker',

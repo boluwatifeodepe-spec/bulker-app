@@ -37,7 +37,7 @@ class BulkerState extends ChangeNotifier {
   String? pairingCode;
   String pairingStatus = 'STATUS: WAITING FOR INPUT...';
   String? lastError;
-  String appVersion = '1.0.2';
+  String appVersion = '1.0.3';
   String profileName = 'Bulker User';
   String profilePhone = '';
   String? profilePhotoPath;
@@ -99,17 +99,25 @@ class BulkerState extends ChangeNotifier {
   }
 
   Future<void> requestPairingCode(String phoneNumber) async {
+    final normalized = phoneNumber.replaceAll(RegExp(r'\D'), '');
+    if (!RegExp(r'^[1-9]\d{8,14}$').hasMatch(normalized)) {
+      pairingCode = null;
+      pairingStatus = 'STATUS: CHECK PHONE NUMBER';
+      lastError = 'Select your country code and enter a valid phone number.';
+      notifyListeners();
+      return;
+    }
     isBusy = true;
     lastError = null;
     pairingStatus = 'STATUS: REQUESTING PAIRING CODE...';
     notifyListeners();
     try {
-      pairingCode = await _api.requestPairingCode(phoneNumber);
+      pairingCode = await _api.requestPairingCode(normalized);
       pairingStatus = 'STATUS: WAITING FOR LINK...';
     } catch (error) {
       pairingCode = null;
       pairingStatus = 'STATUS: PAIRING FAILED';
-      lastError = '$error';
+      lastError = error.toString().replaceFirst('Exception: ', '');
     } finally {
       isBusy = false;
       notifyListeners();
@@ -178,38 +186,32 @@ class BulkerState extends ChangeNotifier {
     lastError = null;
     notifyListeners();
     try {
-      final permitted = await phone_contacts.FlutterContacts.requestPermission(
-        readonly: true,
-      );
-      if (!permitted) {
-        lastError = 'Contacts permission was not allowed.';
-        notifyListeners();
-        return;
-      }
-      final phoneContacts = await phone_contacts.FlutterContacts.getContacts(
-        withProperties: true,
-      );
+      final picked = await phone_contacts.FlutterContacts.openExternalPick();
       var imported = 0;
       final existing = contacts.map((contact) => contact.normalizedPhone).toSet();
-      for (final item in phoneContacts) {
-        for (final number in item.phones) {
-          final digits = number.number.replaceAll(RegExp(r'\D'), '');
-          if (digits.length < 9 || existing.contains(digits)) continue;
-          contacts.add(
-            Contact(
-              name: item.displayName.trim().isEmpty ? 'Phone Contact' : item.displayName,
-              phone: digits,
-            ),
-          );
-          existing.add(digits);
-          imported++;
-        }
+      if (picked == null) return;
+      final fullContact = await phone_contacts.FlutterContacts.getContact(
+        picked.id,
+        withProperties: true,
+      );
+      final item = fullContact ?? picked;
+      for (final number in item.phones) {
+        final digits = number.number.replaceAll(RegExp(r'\D'), '');
+        if (digits.length < 9 || existing.contains(digits)) continue;
+        contacts.add(
+          Contact(
+            name: item.displayName.trim().isEmpty ? 'Phone Contact' : item.displayName,
+            phone: digits,
+          ),
+        );
+        existing.add(digits);
+        imported++;
       }
       if (imported == 0) {
-        lastError = 'No new phone contacts found.';
+        lastError = 'No new phone number found on that contact.';
       }
     } catch (error) {
-      lastError = 'Could not import phone contacts: $error';
+      lastError = 'Could not open phone contacts. Allow Contacts permission and try again.';
     }
     notifyListeners();
   }

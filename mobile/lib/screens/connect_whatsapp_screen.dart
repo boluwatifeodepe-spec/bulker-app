@@ -12,7 +12,8 @@ class ConnectWhatsAppScreen extends StatefulWidget {
 }
 
 class _ConnectWhatsAppScreenState extends State<ConnectWhatsAppScreen> {
-  final _phoneController = TextEditingController(text: '812 3456 7890');
+  final _phoneController = TextEditingController();
+  _CountryCode _country = _countryCodes.first;
 
   @override
   void dispose() {
@@ -59,14 +60,36 @@ class _ConnectWhatsAppScreenState extends State<ConnectWhatsAppScreen> {
               Row(
                 children: [
                   Container(
-                    width: 46,
+                    width: 82,
                     height: 48,
-                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(
                       border: Border.all(color: const Color(0xFFC8CDD4)),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text('+↳', style: TextStyle(fontWeight: FontWeight.w800)),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<_CountryCode>(
+                        value: _country,
+                        isExpanded: true,
+                        icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+                        items: _countryCodes
+                            .map(
+                              (country) => DropdownMenuItem(
+                                value: country,
+                                child: Text(
+                                  country.label,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontWeight: FontWeight.w900),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (country) {
+                          if (country == null) return;
+                          setState(() => _country = country);
+                        },
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -109,7 +132,7 @@ class _ConnectWhatsAppScreenState extends State<ConnectWhatsAppScreen> {
                 label: state.isBusy ? 'Generating...' : 'Generate Code',
                 onPressed: state.isBusy
                     ? null
-                    : () => state.requestPairingCode(_phoneController.text),
+                    : () => state.requestPairingCode(_fullPhoneNumber),
               ),
               if (state.whatsAppReady) ...[
                 const SizedBox(height: 12),
@@ -221,7 +244,39 @@ class _ConnectWhatsAppScreenState extends State<ConnectWhatsAppScreen> {
       ],
     );
   }
+
+  String get _fullPhoneNumber {
+    var local = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+    while (local.startsWith('0')) {
+      local = local.substring(1);
+    }
+    return '${_country.dialCode}$local';
+  }
 }
+
+class _CountryCode {
+  const _CountryCode({
+    required this.name,
+    required this.dialCode,
+    required this.flag,
+  });
+
+  final String name;
+  final String dialCode;
+  final String flag;
+
+  String get label => '$flag +$dialCode';
+}
+
+const _countryCodes = [
+  _CountryCode(name: 'Nigeria', dialCode: '234', flag: 'NG'),
+  _CountryCode(name: 'Ghana', dialCode: '233', flag: 'GH'),
+  _CountryCode(name: 'Kenya', dialCode: '254', flag: 'KE'),
+  _CountryCode(name: 'South Africa', dialCode: '27', flag: 'ZA'),
+  _CountryCode(name: 'United Kingdom', dialCode: '44', flag: 'UK'),
+  _CountryCode(name: 'United States', dialCode: '1', flag: 'US'),
+  _CountryCode(name: 'India', dialCode: '91', flag: 'IN'),
+];
 
 class _InstructionStep extends StatelessWidget {
   const _InstructionStep({required this.number, required this.text});
