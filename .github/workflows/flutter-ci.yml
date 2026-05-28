@@ -37,6 +37,13 @@ jobs:
 
       - name: Use Android SDK 35
         run: |
+          mkdir -p android/app/src/main/res/drawable
+          cp android_assets/ic_launcher.xml android/app/src/main/res/drawable/ic_launcher.xml
+          perl -0pi -e 's/android:icon="@mipmap\/ic_launcher"/android:icon="@drawable\/ic_launcher"/' android/app/src/main/AndroidManifest.xml
+          perl -0pi -e 's/android:roundIcon="@mipmap\/ic_launcher"/android:roundIcon="@drawable\/ic_launcher"/' android/app/src/main/AndroidManifest.xml
+          if ! grep -q "android.permission.READ_CONTACTS" android/app/src/main/AndroidManifest.xml; then
+            perl -0pi -e 's/<manifest([^>]*)>/<manifest$1>\n    <uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.READ_CONTACTS"\/>/' android/app/src/main/AndroidManifest.xml
+          fi
           if [ -f android/app/build.gradle ]; then
             perl -0pi -e 's/compileSdk = flutter\.compileSdkVersion/compileSdk = 35/' android/app/build.gradle
             perl -0pi -e 's/minSdk = flutter\.minSdkVersion/minSdk = 23/' android/app/build.gradle

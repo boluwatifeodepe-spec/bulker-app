@@ -1,5 +1,9 @@
+import 'dart:io';
+
+import 'package:bulker/providers/bulker_state.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.child});
@@ -48,6 +52,8 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<BulkerState>();
+    final photoPath = state.profilePhotoPath;
     return Container(
       height: 53,
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -74,22 +80,29 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF173041), Color(0xFF8FD6E6)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => context.go('/settings'),
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF173041), Color(0xFF8FD6E6)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x22000000), blurRadius: 8),
+                ],
               ),
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: const [
-                BoxShadow(color: Color(0x22000000), blurRadius: 8),
-              ],
+              clipBehavior: Clip.antiAlias,
+              child: photoPath == null
+                  ? const Icon(Icons.person, color: Colors.white, size: 18)
+                  : Image.file(File(photoPath), fit: BoxFit.cover),
             ),
-            child: const Icon(Icons.person, color: Colors.white, size: 18),
           ),
         ],
       ),

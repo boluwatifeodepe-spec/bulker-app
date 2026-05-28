@@ -20,6 +20,8 @@ class ManageContactsScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 30, 20, 18),
             children: [
               Text('Contacts', style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: 12),
+              _WhatsAppConnectionCard(connected: state.whatsAppReady),
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -41,6 +43,29 @@ class ManageContactsScreen extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              _ActionButton(
+                label: 'Import Phone Contacts',
+                icon: Icons.contacts_outlined,
+                onTap: state.importPhoneContacts,
+              ),
+              if (state.lastError != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE8E8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    state.lastError!,
+                    style: const TextStyle(
+                      color: Color(0xFFB42318),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               TextField(
                 onChanged: state.updateContactSearch,
@@ -155,6 +180,55 @@ class ManageContactsScreen extends StatelessWidget {
               Navigator.pop(context);
             },
             child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WhatsAppConnectionCard extends StatelessWidget {
+  const _WhatsAppConnectionCard({required this.connected});
+
+  final bool connected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE1E4E8)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            connected ? Icons.check_circle_outline : Icons.link,
+            color: const Color(0xFF2F7D32),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  connected ? 'WhatsApp connected' : 'Connect WhatsApp',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  connected
+                      ? 'Ready to send to selected contacts.'
+                      : 'Link your WhatsApp before sending campaigns.',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF5E6672)),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.go('/'),
+            child: Text(connected ? 'Manage' : 'Link'),
           ),
         ],
       ),

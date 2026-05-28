@@ -11,6 +11,7 @@ import 'package:bulker/services/socket_service.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_contacts/flutter_contacts.dart' as phone_contacts;
 import 'package:image_picker/image_picker.dart';
 
 class BulkerState extends ChangeNotifier {
@@ -36,7 +37,10 @@ class BulkerState extends ChangeNotifier {
   String? pairingCode;
   String pairingStatus = 'STATUS: WAITING FOR INPUT...';
   String? lastError;
-  String appVersion = '1.0.0';
+  String appVersion = '1.0.2';
+  String profileName = 'Bulker User';
+  String profilePhone = '';
+  String? profilePhotoPath;
   String? campaignId;
   int sent = 0;
   int failed = 0;
@@ -87,9 +91,9 @@ class BulkerState extends ChangeNotifier {
       pairingStatus = whatsAppReady
           ? 'STATUS: WHATSAPP CONNECTED'
           : 'STATUS: WHATSAPP NOT LINKED';
-      lastError = status['error'] as String?;
     } catch (error) {
-      lastError = '$error';
+      whatsAppReady = false;
+      pairingStatus = 'STATUS: BACKEND NOT CONNECTED';
     }
     notifyListeners();
   }
@@ -170,12 +174,65 @@ class BulkerState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> importPhoneContacts() async {
+    lastError = null;
+    notifyListeners();
+    try {
+      final permitted = await phone_contacts.FlutterContacts.requestPermission(
+        readonly: true,
+      );
+      if (!permitted) {
+        lastError = 'Contacts permission was not allowed.';
+        notifyListeners();
+        return;
+      }
+      final phoneContacts = await phone_contacts.FlutterContacts.getContacts(
+        withProperties: true,
+      );
+      var imported = 0;
+      final existing = contacts.map((contact) => contact.normalizedPhone).toSet();
+      for (final item in phoneContacts) {
+        for (final number in item.phones) {
+          final digits = number.number.replaceAll(RegExp(r'\D'), '');
+          if (digits.length < 9 || existing.contains(digits)) continue;
+          contacts.add(
+            Contact(
+              name: item.displayName.trim().isEmpty ? 'Phone Contact' : item.displayName,
+              phone: digits,
+            ),
+          );
+          existing.add(digits);
+          imported++;
+        }
+      }
+      if (imported == 0) {
+        lastError = 'No new phone contacts found.';
+      }
+    } catch (error) {
+      lastError = 'Could not import phone contacts: $error';
+    }
+    notifyListeners();
+  }
+
   void addContact(String name, String phone) {
     final contact = Contact(name: name, phone: phone);
     contacts.add(contact);
     try {
       _firebase.upsertContact(contact).catchError((_) {});
     } catch (_) {}
+    notifyListeners();
+  }
+
+  Future<void> pickProfilePhoto() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 82);
+    if (picked == null) return;
+    profilePhotoPath = picked.path;
+    notifyListeners();
+  }
+
+  void updateProfile({required String name, required String phone}) {
+    profileName = name.trim().isEmpty ? 'Bulker User' : name.trim();
+    profilePhone = phone.trim();
     notifyListeners();
   }
 
@@ -269,7 +326,7 @@ class BulkerState extends ChangeNotifier {
         ..clear()
         ..addAll(campaigns);
     } catch (error) {
-      lastError = '$error';
+      campaignHistory.clear();
     } finally {
       isLoadingHistory = false;
       notifyListeners();
@@ -295,7 +352,7 @@ class BulkerState extends ChangeNotifier {
         ..clear()
         ..addAll(accounts.map((item) => Map<String, dynamic>.from(item as Map)));
     } catch (error) {
-      lastError = '$error';
+      whatsappAccounts.clear();
     }
     notifyListeners();
   }

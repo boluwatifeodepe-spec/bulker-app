@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:bulker/providers/bulker_state.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -13,10 +16,13 @@ class SettingsScreen extends StatelessWidget {
       children: [
         Text('Settings', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 20),
+        _ProfileCard(state: state),
+        const SizedBox(height: 16),
         _SettingsTile(
           title: 'WhatsApp status',
           value: state.whatsAppReady ? 'Connected' : 'Disconnected',
           icon: Icons.link,
+          onTap: () => context.go('/'),
         ),
         _SettingsTile(
           title: 'App version',
@@ -38,6 +44,12 @@ class SettingsScreen extends StatelessWidget {
           ),
         const SizedBox(height: 22),
         OutlinedButton.icon(
+          onPressed: () => context.go('/'),
+          icon: const Icon(Icons.link),
+          label: Text(state.whatsAppReady ? 'Manage WhatsApp Link' : 'Connect WhatsApp'),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
           onPressed: state.refreshSettings,
           icon: const Icon(Icons.sync),
           label: const Text('Refresh Settings'),
@@ -57,36 +69,140 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({required this.state});
+
+  final BulkerState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final photoPath = state.profilePhotoPath;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE1E4E8)),
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(36),
+            onTap: state.pickProfilePhoto,
+            child: CircleAvatar(
+              radius: 34,
+              backgroundColor: const Color(0xFF173041),
+              backgroundImage: photoPath == null ? null : FileImage(File(photoPath)),
+              child: photoPath == null
+                  ? const Icon(Icons.person, color: Colors.white, size: 34)
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  state.profileName,
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  state.profilePhone.isEmpty ? 'Tap edit to add phone' : state.profilePhone,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF5E6672)),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _showProfileEditor(context, state),
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showProfileEditor(BuildContext context, BulkerState state) {
+    final name = TextEditingController(text: state.profileName);
+    final phone = TextEditingController(text: state.profilePhone);
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Profile'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextButton.icon(
+              onPressed: state.pickProfilePhoto,
+              icon: const Icon(Icons.photo_camera_outlined),
+              label: const Text('Upload Profile Photo'),
+            ),
+            TextField(
+              controller: name,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            TextField(
+              controller: phone,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(labelText: 'Phone number'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              state.updateProfile(name: name.text, phone: phone.text);
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SettingsTile extends StatelessWidget {
   const _SettingsTile({
     required this.title,
     required this.value,
     required this.icon,
+    this.onTap,
   });
 
   final String title;
   final String value;
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE1E4E8)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFF2F7D32)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-          ),
-          Text(value, style: const TextStyle(fontSize: 12)),
-        ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE1E4E8)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: const Color(0xFF2F7D32)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+            ),
+            Text(value, style: const TextStyle(fontSize: 12)),
+            if (onTap != null) const SizedBox(width: 8),
+            if (onTap != null) const Icon(Icons.chevron_right, size: 18),
+          ],
+        ),
       ),
     );
   }
