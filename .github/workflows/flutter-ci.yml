@@ -12,6 +12,9 @@ on:
       - "mobile/**"
       - ".github/workflows/flutter-ci.yml"
 
+permissions:
+  contents: write
+
 jobs:
   analyze-and-build-apk:
     runs-on: ubuntu-latest
@@ -71,3 +74,18 @@ jobs:
         with:
           name: bulker-release-apk
           path: mobile/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Publish APK download file
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p download
+          cp mobile/build/app/outputs/flutter-apk/app-release.apk download/Bulker.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add download/Bulker.apk
+          if git diff --cached --quiet; then
+            echo "Download APK is already current."
+          else
+            git commit -m "Update downloadable Bulker APK"
+            git push
+          fi

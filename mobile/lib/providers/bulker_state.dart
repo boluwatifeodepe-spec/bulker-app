@@ -70,8 +70,8 @@ class BulkerState extends ChangeNotifier {
       onPairingStatus: _handlePairingStatus,
     );
     try {
-      await _firebase.signInAnonymously();
-      isAuthenticated = true;
+      final user = await _firebase.signInAnonymously();
+      isAuthenticated = user != null;
     } catch (_) {
       // The app remains usable in local/demo mode until Firebase is configured.
     }

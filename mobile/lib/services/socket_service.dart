@@ -9,22 +9,26 @@ class SocketService {
     required void Function(Map<String, dynamic>) onComplete,
     required void Function(Map<String, dynamic>) onPairingStatus,
   }) {
-    _socket ??= io.io(
-      AppConstants.backendUrl,
-      io.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build(),
-    );
+    try {
+      _socket ??= io.io(
+        AppConstants.backendUrl,
+        io.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build(),
+      );
 
-    _socket!
-      ..on('campaign:progress', (data) {
-        onProgress(Map<String, dynamic>.from(data as Map));
-      })
-      ..on('campaign:complete', (data) {
-        onComplete(Map<String, dynamic>.from(data as Map));
-      })
-      ..on('whatsapp:status', (data) {
-        onPairingStatus(Map<String, dynamic>.from(data as Map));
-      })
-      ..connect();
+      _socket!
+        ..on('campaign:progress', (data) {
+          if (data is Map) onProgress(Map<String, dynamic>.from(data));
+        })
+        ..on('campaign:complete', (data) {
+          if (data is Map) onComplete(Map<String, dynamic>.from(data));
+        })
+        ..on('whatsapp:status', (data) {
+          if (data is Map) onPairingStatus(Map<String, dynamic>.from(data));
+        })
+        ..connect();
+    } catch (_) {
+      _socket = null;
+    }
   }
 
   void dispose() {
