@@ -67,6 +67,10 @@ class ApiService {
         .toList();
   }
 
+  Uri campaignReportUrl(String campaignId) {
+    return _uri('/api/send/$campaignId/report.csv');
+  }
+
   Future<String> startCampaign({
     required String mediaPath,
     required String mediaType,

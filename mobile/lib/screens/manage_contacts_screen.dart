@@ -49,6 +49,12 @@ class ManageContactsScreen extends StatelessWidget {
                 icon: Icons.contacts_outlined,
                 onTap: state.importPhoneContacts,
               ),
+              const SizedBox(height: 12),
+              _ActionButton(
+                label: 'Clean Duplicates / Invalid Numbers',
+                icon: Icons.cleaning_services_outlined,
+                onTap: state.cleanupContacts,
+              ),
               if (state.contactError != null) ...[
                 const SizedBox(height: 12),
                 Container(

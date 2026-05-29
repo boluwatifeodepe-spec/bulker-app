@@ -37,6 +37,37 @@ router.post('/', upload.single('media'), (req, res) => {
   }
 });
 
+router.get('/:campaignId/report.csv', (req, res) => {
+  const campaign = getCampaign(req.params.campaignId);
+  if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+
+  const rows = [
+    ['name', 'phone', 'status', 'error'],
+    ...campaign.contacts.map((contact) => [
+      contact.name,
+      contact.phone,
+      contact.status,
+      contact.error || '',
+    ]),
+    ...(campaign.rejected || []).map((contact) => [
+      contact.name,
+      contact.phone,
+      'rejected',
+      contact.reason || 'Rejected',
+    ]),
+  ];
+  const csv = rows
+    .map((row) =>
+      row
+        .map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`)
+        .join(','),
+    )
+    .join('\n');
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="${campaign.name}-report.csv"`);
+  return res.send(csv);
+});
+
 router.get('/history', (_req, res) => {
   res.json({ campaigns: getCampaigns() });
 });

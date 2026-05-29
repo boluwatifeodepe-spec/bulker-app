@@ -52,9 +52,20 @@ class _CampaignCard extends StatelessWidget {
           Text(campaign.name, style: const TextStyle(fontWeight: FontWeight.w900)),
           const SizedBox(height: 6),
           Text(
-            '${campaign.status.toUpperCase()} · ${campaign.sent}/${campaign.total} sent · ${campaign.failed} failed',
+            '${campaign.status.toUpperCase()} · ${campaign.sent}/${campaign.total} sent · ${campaign.failed} failed · ${campaign.rejected} rejected',
             style: const TextStyle(fontSize: 12),
           ),
+          if (campaign.stoppedReason != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              campaign.stoppedReason!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFFB42318),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
           if (campaign.scheduledFor != null) ...[
             const SizedBox(height: 6),
             Text(
@@ -64,12 +75,40 @@ class _CampaignCard extends StatelessWidget {
           ],
           if (campaign.failed > 0) ...[
             const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: () => state.retryFailed(campaign),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry Failed'),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => state.retryFailed(campaign),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry Failed'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showReportLink(context, state, campaign),
+                    icon: const Icon(Icons.file_download_outlined),
+                    label: const Text('Report CSV'),
+                  ),
+                ),
+              ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  void _showReportLink(BuildContext context, BulkerState state, Campaign campaign) {
+    final url = state.campaignReportUrl(campaign.id);
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Campaign Report'),
+        content: SelectableText(url),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
         ],
       ),
     );

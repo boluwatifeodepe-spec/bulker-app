@@ -34,6 +34,7 @@ class BulkerState extends ChangeNotifier {
   final List<ActivityLog> activity = [];
   final List<Campaign> campaignHistory = [];
   final List<Map<String, dynamic>> whatsappAccounts = [];
+  final Map<String, dynamic> safety = {};
 
   String? pairingCode;
   String pairingStatus = 'STATUS: WAITING FOR INPUT...';
@@ -56,6 +57,8 @@ class BulkerState extends ChangeNotifier {
   String contactSearchQuery = '';
   bool isAuthenticated = false;
   bool isLoadingHistory = false;
+  int duplicatesRemoved = 0;
+  int invalidContactsRemoved = 0;
 
   int get selectedCount => contacts.where((contact) => contact.selected).length;
   double get progress => total == 0 ? 0 : sent / total;
@@ -200,6 +203,7 @@ class BulkerState extends ChangeNotifier {
         contacts.add(Contact(name: '${row[0]}', phone: '${row[1]}'));
       }
     }
+    cleanupContacts(showResult: false);
     for (final contact in contacts) {
       try {
         _firebase.upsertContact(contact).catchError((_) {});
@@ -212,29 +216,36 @@ class BulkerState extends ChangeNotifier {
     contactError = null;
     notifyListeners();
     try {
-      final picked = await phone_contacts.FlutterContacts.openExternalPick();
+      final allowed = await phone_contacts.FlutterContacts.requestPermission();
+      if (!allowed) {
+        contactError = 'Contacts permission is required before Bulker can import phone contacts.';
+        notifyListeners();
+        return;
+      }
       var imported = 0;
       final existing = contacts.map((contact) => contact.normalizedPhone).toSet();
-      if (picked == null) return;
-      final fullContact = await phone_contacts.FlutterContacts.getContact(
-        picked.id,
+      final phoneContacts = await phone_contacts.FlutterContacts.getContacts(
         withProperties: true,
       );
-      final item = fullContact ?? picked;
-      for (final number in item.phones) {
-        final digits = number.number.replaceAll(RegExp(r'\D'), '');
-        if (digits.length < 9 || existing.contains(digits)) continue;
-        contacts.add(
-          Contact(
-            name: item.displayName.trim().isEmpty ? 'Phone Contact' : item.displayName,
-            phone: digits,
-          ),
-        );
-        existing.add(digits);
-        imported++;
+      for (final item in phoneContacts) {
+        for (final number in item.phones) {
+          final digits = number.number.replaceAll(RegExp(r'\D'), '');
+          if (digits.length < 9 || existing.contains(digits)) continue;
+          contacts.add(
+            Contact(
+              name: item.displayName.trim().isEmpty ? 'Phone Contact' : item.displayName,
+              phone: digits,
+            ),
+          );
+          existing.add(digits);
+          imported++;
+        }
       }
       if (imported == 0) {
-        contactError = 'No new phone number found on that contact.';
+        contactError = 'No new phone contacts found.';
+      } else {
+        cleanupContacts(showResult: false);
+        contactError = 'Imported $imported phone contacts.';
       }
     } catch (error) {
       contactError = 'Could not open phone contacts. Allow Contacts permission and try again.';
@@ -244,10 +255,47 @@ class BulkerState extends ChangeNotifier {
 
   void addContact(String name, String phone) {
     final contact = Contact(name: name, phone: phone);
+    if (!contact.isValid) {
+      contactError = 'Enter phone number with country code and no leading zero.';
+      notifyListeners();
+      return;
+    }
+    if (contacts.any((item) => item.normalizedPhone == contact.normalizedPhone)) {
+      contactError = 'This phone number is already in your contacts.';
+      notifyListeners();
+      return;
+    }
     contacts.add(contact);
     try {
       _firebase.upsertContact(contact).catchError((_) {});
     } catch (_) {}
+    notifyListeners();
+  }
+
+  void cleanupContacts({bool showResult = true}) {
+    final seen = <String>{};
+    var duplicates = 0;
+    var invalid = 0;
+    contacts.removeWhere((contact) {
+      if (!contact.isValid) {
+        invalid++;
+        return true;
+      }
+      final phone = contact.normalizedPhone;
+      if (seen.contains(phone)) {
+        duplicates++;
+        return true;
+      }
+      seen.add(phone);
+      return false;
+    });
+    duplicatesRemoved = duplicates;
+    invalidContactsRemoved = invalid;
+    if (showResult) {
+      contactError = duplicates == 0 && invalid == 0
+          ? 'Contacts are clean. No duplicate or invalid numbers found.'
+          : 'Cleaned contacts: removed $duplicates duplicate and $invalid invalid number(s).';
+    }
     notifyListeners();
   }
 
@@ -371,10 +419,17 @@ class BulkerState extends ChangeNotifier {
     notifyListeners();
   }
 
+  String campaignReportUrl(String campaignId) {
+    return _api.campaignReportUrl(campaignId).toString();
+  }
+
   Future<void> refreshSettings() async {
     try {
       final settings = await _api.fetchSettings();
       appVersion = settings['version'] as String? ?? appVersion;
+      safety
+        ..clear()
+        ..addAll(Map<String, dynamic>.from(settings['safety'] as Map? ?? {}));
       final accounts = settings['accounts'] as List<dynamic>? ?? [];
       whatsappAccounts
         ..clear()

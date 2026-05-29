@@ -29,6 +29,17 @@ class SettingsScreen extends StatelessWidget {
           value: state.appVersion,
           icon: Icons.info_outline,
         ),
+        _SettingsTile(
+          title: 'Sent today',
+          value: '${state.safety['sentToday'] ?? 0}/${state.safety['dailyLimit'] ?? 150}',
+          icon: Icons.speed_outlined,
+        ),
+        _SettingsTile(
+          title: 'Send delay',
+          value:
+              '${((state.safety['minDelayMs'] ?? 30000) / 1000).round()}-${((state.safety['maxDelayMs'] ?? 90000) / 1000).round()}s',
+          icon: Icons.timer_outlined,
+        ),
         const SizedBox(height: 18),
         const Text('WhatsApp Accounts', style: TextStyle(fontWeight: FontWeight.w900)),
         const SizedBox(height: 10),

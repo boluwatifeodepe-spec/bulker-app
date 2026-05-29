@@ -8,9 +8,73 @@ const { sendMediaMessage } = require('./whatsapp');
 const queues = new Map();
 const campaigns = new Map();
 const scheduledCampaigns = new Map();
+const dailyUsage = new Map();
+
+function safetyConfig() {
+  return {
+    dailyLimit: Number(process.env.DAILY_SEND_LIMIT || 150),
+    minDelayMs: Number(process.env.MIN_MESSAGE_DELAY_MS || process.env.MESSAGE_DELAY_MS || 30000),
+    maxDelayMs: Number(process.env.MAX_MESSAGE_DELAY_MS || 90000),
+    videoMinDelayMs: Number(process.env.MIN_VIDEO_DELAY_MS || process.env.VIDEO_DELAY_MS || 45000),
+    videoMaxDelayMs: Number(process.env.MAX_VIDEO_DELAY_MS || 120000),
+    stopAfterFailures: Number(process.env.STOP_AFTER_FAILURES || 8),
+    stopFailureRate: Number(process.env.STOP_FAILURE_RATE || 0.55),
+  };
+}
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function randomDelay(minMs, maxMs) {
+  const min = Math.max(0, Math.min(minMs, maxMs));
+  const max = Math.max(min, maxMs);
+  return Math.round(min + Math.random() * (max - min));
+}
+
+function todayKey(accountId = 'default') {
+  return `${accountId}:${new Date().toISOString().slice(0, 10)}`;
+}
+
+function getDailySent(accountId = 'default') {
+  return dailyUsage.get(todayKey(accountId)) || 0;
+}
+
+function incrementDailySent(accountId = 'default') {
+  const key = todayKey(accountId);
+  dailyUsage.set(key, (dailyUsage.get(key) || 0) + 1);
+}
+
+function normalizePhone(phone) {
+  return String(phone || '').replace(/\D/g, '').replace(/^0+/, '');
+}
+
+function sanitizeContacts(contacts) {
+  const seen = new Set();
+  const validContacts = [];
+  const rejected = [];
+
+  for (const contact of contacts || []) {
+    const phone = normalizePhone(contact.phone);
+    const name = String(contact.name || 'Contact').trim() || 'Contact';
+    if (!/^[1-9]\d{8,14}$/.test(phone)) {
+      rejected.push({ ...contact, name, phone, reason: 'Invalid phone number' });
+      continue;
+    }
+    if (seen.has(phone)) {
+      rejected.push({ ...contact, name, phone, reason: 'Duplicate phone number' });
+      continue;
+    }
+    seen.add(phone);
+    validContacts.push({
+      id: contact.id || `${Date.now()}-${validContacts.length}`,
+      name,
+      phone,
+      status: contact.status || 'pending',
+    });
+  }
+
+  return { validContacts, rejected };
 }
 
 function publicCampaign(campaign) {
@@ -27,6 +91,9 @@ function publicCampaign(campaign) {
     sent: campaign.sent,
     failed: campaign.failed,
     total: campaign.total,
+    rejected: campaign.rejected,
+    stoppedReason: campaign.stoppedReason,
+    safety: campaign.safety,
     contacts: campaign.contacts,
   };
 }
@@ -58,6 +125,8 @@ function createCampaign({
   scheduledFor,
   io,
 }) {
+  const { validContacts, rejected } = sanitizeContacts(contacts);
+  const safety = safetyConfig();
   const campaignId = randomUUID();
   const campaign = {
     id: campaignId,
@@ -72,8 +141,11 @@ function createCampaign({
     status: scheduledFor ? 'scheduled' : 'running',
     sent: 0,
     failed: 0,
-    total: contacts.length,
-    contacts: contacts.map((contact) => ({
+    total: validContacts.length,
+    rejected,
+    stoppedReason: null,
+    safety,
+    contacts: validContacts.map((contact) => ({
       ...contact,
       status: 'pending',
       error: null,
@@ -174,11 +246,9 @@ async function retryFailedCampaign(campaignId, io) {
 }
 
 async function runQueue({ queue, campaign, io }) {
-  const delay = Number(
-    campaign.mediaType === 'video'
-      ? process.env.VIDEO_DELAY_MS || 7000
-      : process.env.MESSAGE_DELAY_MS || 4000,
-  );
+  const safety = campaign.safety || safetyConfig();
+  const minDelay = campaign.mediaType === 'video' ? safety.videoMinDelayMs : safety.minDelayMs;
+  const maxDelay = campaign.mediaType === 'video' ? safety.videoMaxDelayMs : safety.maxDelayMs;
 
   for (const contact of campaign.contacts) {
     if (queue.cancelled) break;
@@ -188,12 +258,22 @@ async function runQueue({ queue, campaign, io }) {
     if (queue.cancelled) break;
 
     try {
+      if (getDailySent() >= safety.dailyLimit) {
+        contact.status = 'failed';
+        contact.error = `Daily safety limit reached (${safety.dailyLimit}).`;
+        campaign.failed += 1;
+        campaign.stoppedReason = contact.error;
+        queue.cancelled = true;
+        break;
+      }
+
       await sendMediaMessage({
         phone: contact.phone,
         mediaPath: campaign.mediaPath,
         caption: campaign.caption,
       });
       campaign.sent += 1;
+      incrementDailySent();
       contact.status = 'sent';
       contact.error = null;
       io.emit('campaign:progress', {
@@ -221,10 +301,20 @@ async function runQueue({ queue, campaign, io }) {
     }
     persistCampaign(campaign).catch(() => {});
 
-    await wait(delay);
+    if (campaign.failed >= safety.stopAfterFailures) {
+      const attempted = campaign.sent + campaign.failed;
+      const failureRate = attempted === 0 ? 0 : campaign.failed / attempted;
+      if (failureRate >= safety.stopFailureRate) {
+        campaign.stoppedReason = 'Stopped because too many messages failed. Check WhatsApp connection and contact numbers.';
+        queue.cancelled = true;
+        break;
+      }
+    }
+
+    await wait(randomDelay(minDelay, maxDelay));
   }
 
-  campaign.status = queue.cancelled ? 'cancelled' : 'complete';
+  campaign.status = queue.cancelled && campaign.stoppedReason ? 'stopped' : queue.cancelled ? 'cancelled' : 'complete';
   campaign.completedAt = new Date().toISOString();
   persistCampaign(campaign).catch(() => {});
   io.emit('campaign:complete', {
@@ -242,7 +332,10 @@ module.exports = {
   createCampaign,
   getCampaign,
   getCampaigns,
+  getDailySent,
+  safetyConfig,
   pauseCampaign,
   retryFailedCampaign,
   resumeCampaign,
+  sanitizeContacts,
 };
