@@ -26,10 +26,10 @@ RUN apt-get update \
     xdg-utils \
   && rm -rf /var/lib/apt/lists/*
 
-COPY backend/package*.json ./
+COPY package*.json ./
 RUN npm ci --omit=dev
 
-COPY backend/. .
+COPY . .
 
 RUN mkdir -p uploads
 

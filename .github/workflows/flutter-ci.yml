@@ -6,7 +6,7 @@ on:
       backend_url:
         description: "Backend URL for the app build"
         required: true
-        default: "https://your-backend-url.railway.app"
+        default: "https://backend-production-e947.up.railway.app"
   push:
     paths:
       - "mobile/**"
@@ -66,7 +66,7 @@ jobs:
       - name: Build APK
         run: |
           set +e
-          BACKEND_URL="${{ github.event.inputs.backend_url || vars.BULKER_BACKEND_URL || 'https://your-backend-url.railway.app' }}"
+          BACKEND_URL="${{ github.event.inputs.backend_url || vars.BULKER_BACKEND_URL || 'https://backend-production-e947.up.railway.app' }}"
           flutter build apk --release --dart-define=BACKEND_URL="$BACKEND_URL" 2>&1 | tee build.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then

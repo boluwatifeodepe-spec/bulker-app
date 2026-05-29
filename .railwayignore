@@ -1,0 +1,11 @@
+.git
+.github
+download
+mobile
+scripts
+backend/node_modules
+backend/uploads
+backend/.env
+*.zip
+*.apk
+.DS_Store
