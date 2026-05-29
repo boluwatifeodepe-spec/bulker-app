@@ -15,8 +15,9 @@ const router = express.Router();
 router.post('/', upload.single('media'), (req, res) => {
   try {
     const contacts = JSON.parse(req.body.contacts || '[]');
-    if (!req.file) {
-      return res.status(400).json({ error: 'Media file is required.' });
+    const caption = req.body.caption || '';
+    if (!req.file && !caption.trim()) {
+      return res.status(400).json({ error: 'Message caption is required.' });
     }
     if (!contacts.length) {
       return res.status(400).json({ error: 'At least one contact is required.' });
@@ -24,9 +25,9 @@ router.post('/', upload.single('media'), (req, res) => {
 
     const campaignId = createCampaign({
       contacts,
-      mediaPath: req.file.path,
-      mediaType: req.body.mediaType,
-      caption: req.body.caption || '',
+      mediaPath: req.file?.path || null,
+      mediaType: req.body.mediaType || 'text',
+      caption,
       name: req.body.name || 'Untitled Campaign',
       scheduledFor: req.body.scheduledFor || null,
       io: req.app.get('io'),

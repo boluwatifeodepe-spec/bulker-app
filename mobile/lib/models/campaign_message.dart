@@ -13,6 +13,6 @@ class CampaignMessage {
   String name;
   DateTime? scheduledFor;
 
-  bool get isReady => mediaPath != null && caption.trim().isNotEmpty;
+  bool get isReady => caption.trim().isNotEmpty;
   String get displayName => name.trim().isEmpty ? 'Untitled Campaign' : name.trim();
 }

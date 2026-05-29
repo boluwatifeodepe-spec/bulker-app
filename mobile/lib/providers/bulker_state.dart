@@ -118,6 +118,9 @@ class BulkerState extends ChangeNotifier {
       pairingStatus = whatsAppReady
           ? 'STATUS: WHATSAPP CONNECTED'
           : 'STATUS: WHATSAPP NOT LINKED';
+      if (whatsAppReady && contacts.isEmpty) {
+        await importWhatsAppContacts(showErrors: false);
+      }
     } catch (error) {
       whatsAppReady = false;
       pairingStatus = 'STATUS: BACKEND NOT CONNECTED';
@@ -253,6 +256,35 @@ class BulkerState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> importWhatsAppContacts({bool showErrors = true}) async {
+    contactError = null;
+    notifyListeners();
+    try {
+      final imported = await _api.fetchWhatsAppContacts();
+      final existing = contacts.map((contact) => contact.normalizedPhone).toSet();
+      var added = 0;
+      for (final contact in imported) {
+        if (!contact.isValid || existing.contains(contact.normalizedPhone)) continue;
+        contacts.add(contact);
+        existing.add(contact.normalizedPhone);
+        added++;
+      }
+      if (added == 0 && showErrors) {
+        contactError = whatsAppReady
+            ? 'No new WhatsApp contacts found.'
+            : 'Link WhatsApp first, then sync WhatsApp contacts.';
+      } else if (showErrors) {
+        contactError = 'Imported $added WhatsApp contacts.';
+      }
+      cleanupContacts(showResult: false);
+    } catch (error) {
+      if (showErrors) {
+        contactError = 'Could not load WhatsApp contacts. Link WhatsApp and try again.';
+      }
+    }
+    notifyListeners();
+  }
+
   void addContact(String name, String phone) {
     final contact = Contact(name: name, phone: phone);
     if (!contact.isValid) {
@@ -354,8 +386,8 @@ class BulkerState extends ChangeNotifier {
     notifyListeners();
     try {
       campaignId = await _api.startCampaign(
-        mediaPath: message.mediaPath!,
-        mediaType: message.mediaType!,
+        mediaPath: message.mediaPath,
+        mediaType: message.mediaType,
         caption: message.caption,
         name: message.displayName,
         scheduledFor: message.scheduledFor,
@@ -471,6 +503,9 @@ class BulkerState extends ChangeNotifier {
   void _handlePairingStatus(Map<String, dynamic> data) {
     pairingStatus = data['message'] as String? ?? pairingStatus;
     whatsAppReady = data['connected'] as bool? ?? whatsAppReady;
+    if (whatsAppReady && contacts.isEmpty) {
+      importWhatsAppContacts(showErrors: false);
+    }
     if (data['error'] != null) {
       lastError = '${data['error']}';
     }

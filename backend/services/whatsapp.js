@@ -46,7 +46,11 @@ function initWhatsApp(io) {
         process.env.PUPPETEER_EXECUTABLE_PATH ||
         '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      protocolTimeout: Number(process.env.WHATSAPP_PROTOCOL_TIMEOUT_MS || 180000),
     },
+    authTimeoutMs: Number(process.env.WHATSAPP_AUTH_TIMEOUT_MS || 120000),
+    takeoverOnConflict: true,
+    takeoverTimeoutMs: 0,
   });
 
   client.on('ready', () => {
@@ -150,21 +154,58 @@ async function waitForReady(timeoutMs = 60000) {
 async function requestPairingCode(phoneNumber) {
   if (!client) initWhatsApp(ioRef);
   if (initError) {
-    throw initError;
+    const message = initError.message || '';
+    if (message.includes('Runtime.callFunctionOn timed out') || message.includes('Protocol error')) {
+      await resetWhatsAppClient();
+      initWhatsApp(ioRef);
+    } else {
+      throw initError;
+    }
   }
   const normalized = normalizePhone(phoneNumber);
   if (!normalized) {
     throw new Error('Phone number must include a country code.');
   }
-  await waitForLoginAvailable();
+  await waitForLoginAvailable(Number(process.env.WHATSAPP_PAIRING_TIMEOUT_MS || 120000));
   return client.requestPairingCode(normalized);
 }
 
 async function sendMediaMessage({ phone, mediaPath, caption }) {
   await waitForReady();
   const chatId = `${normalizePhone(phone)}@c.us`;
+  if (!mediaPath) {
+    return client.sendMessage(chatId, caption);
+  }
   const media = MessageMedia.fromFilePath(mediaPath);
   return client.sendMessage(chatId, media, { caption });
+}
+
+async function getWhatsAppContacts() {
+  await waitForReady();
+  const contacts = await client.getContacts();
+  return contacts
+    .filter((contact) => contact.isUser && !contact.isMe && normalizePhone(contact.number).length >= 9)
+    .map((contact, index) => {
+      const phone = normalizePhone(contact.number);
+      return {
+        id: contact.id?._serialized || `${phone}-${index}`,
+        name: contact.name || contact.pushname || contact.shortName || phone,
+        phone,
+        status: 'pending',
+      };
+    });
+}
+
+async function resetWhatsAppClient() {
+  if (client) {
+    await client.destroy().catch(() => {});
+  }
+  client = null;
+  ready = false;
+  initializing = false;
+  loginAvailable = false;
+  initPromise = null;
+  initError = null;
 }
 
 async function disconnectWhatsApp() {
@@ -206,4 +247,5 @@ module.exports = {
   sendMediaMessage,
   waitForReady,
   normalizePhone,
+  getWhatsAppContacts,
 };

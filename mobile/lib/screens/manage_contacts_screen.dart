@@ -51,6 +51,12 @@ class ManageContactsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _ActionButton(
+                label: 'Sync WhatsApp Contacts',
+                icon: Icons.chat_outlined,
+                onTap: () => state.importWhatsAppContacts(),
+              ),
+              const SizedBox(height: 12),
+              _ActionButton(
                 label: 'Clean Duplicates / Invalid Numbers',
                 icon: Icons.cleaning_services_outlined,
                 onTap: state.cleanupContacts,

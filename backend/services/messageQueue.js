@@ -180,7 +180,7 @@ function startQueue({ campaign, io }) {
   persistCampaign(campaign).catch(() => {});
 
   runQueue({ queue, campaign, io }).finally(() => {
-    if (campaign.failed === 0 || campaign.status === 'cancelled') {
+    if (campaign.mediaPath && (campaign.failed === 0 || campaign.status === 'cancelled')) {
       removeFile(campaign.mediaPath);
     }
   });
@@ -224,11 +224,13 @@ async function retryFailedCampaign(campaignId, io) {
   if (!source) return null;
   const failedContacts = source.contacts.filter((contact) => contact.status === 'failed');
   if (!failedContacts.length) return null;
-  if (!source.mediaPath || !fs.existsSync(source.mediaPath)) return null;
-
-  const extension = path.extname(source.mediaPath);
-  const retryMediaPath = source.mediaPath.replace(extension, `-retry-${Date.now()}${extension}`);
-  fs.copyFileSync(source.mediaPath, retryMediaPath);
+  let retryMediaPath = null;
+  if (source.mediaPath) {
+    if (!fs.existsSync(source.mediaPath)) return null;
+    const extension = path.extname(source.mediaPath);
+    retryMediaPath = source.mediaPath.replace(extension, `-retry-${Date.now()}${extension}`);
+    fs.copyFileSync(source.mediaPath, retryMediaPath);
+  }
 
   return createCampaign({
     contacts: failedContacts.map((contact) => ({

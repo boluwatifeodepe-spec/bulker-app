@@ -67,20 +67,34 @@ class ApiService {
         .toList();
   }
 
+  Future<List<Contact>> fetchWhatsAppContacts() async {
+    final response = await _client.get(_uri('/api/whatsapp/contacts'));
+    if (response.statusCode >= 400) {
+      throw Exception(_messageFromResponse(response, 'Could not load WhatsApp contacts'));
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final contacts = decoded['contacts'] as List<dynamic>? ?? [];
+    return contacts
+        .map((item) => Contact.fromJson(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
   Uri campaignReportUrl(String campaignId) {
     return _uri('/api/send/$campaignId/report.csv');
   }
 
   Future<String> startCampaign({
-    required String mediaPath,
-    required String mediaType,
+    String? mediaPath,
+    String? mediaType,
     required String caption,
     required String name,
     DateTime? scheduledFor,
     required List<Contact> contacts,
   }) async {
     final request = http.MultipartRequest('POST', _uri('/api/send'));
-    request.fields['mediaType'] = mediaType;
+    if (mediaType != null) {
+      request.fields['mediaType'] = mediaType;
+    }
     request.fields['caption'] = caption;
     request.fields['name'] = name;
     if (scheduledFor != null) {
@@ -89,7 +103,9 @@ class ApiService {
     request.fields['contacts'] = jsonEncode(
       contacts.map((contact) => contact.toJson()).toList(),
     );
-    request.files.add(await http.MultipartFile.fromPath('media', mediaPath));
+    if (mediaPath != null) {
+      request.files.add(await http.MultipartFile.fromPath('media', mediaPath));
+    }
     final response = await request.send();
     final body = await response.stream.bytesToString();
     if (response.statusCode >= 400) {
