@@ -13,6 +13,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_contacts/flutter_contacts.dart' as phone_contacts;
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BulkerState extends ChangeNotifier {
   BulkerState({
@@ -38,7 +39,7 @@ class BulkerState extends ChangeNotifier {
   String pairingStatus = 'STATUS: WAITING FOR INPUT...';
   String? lastError;
   String? contactError;
-  String appVersion = '1.0.4';
+  String appVersion = '1.0.5';
   String profileName = 'Bulker User';
   String profilePhone = '';
   String? profilePhotoPath;
@@ -50,6 +51,8 @@ class BulkerState extends ChangeNotifier {
   bool isBusy = false;
   bool whatsAppReady = false;
   bool campaignComplete = false;
+  bool hasCompletedLogin = false;
+  bool isAppReady = false;
   String contactSearchQuery = '';
   bool isAuthenticated = false;
   bool isLoadingHistory = false;
@@ -69,6 +72,9 @@ class BulkerState extends ChangeNotifier {
   }
 
   Future<void> initialize() async {
+    final prefs = await SharedPreferences.getInstance();
+    hasCompletedLogin = prefs.getBool('hasCompletedLogin') ?? false;
+    notifyListeners();
     _socket.connect(
       onProgress: _handleProgress,
       onComplete: handleCampaignComplete,
@@ -83,6 +89,23 @@ class BulkerState extends ChangeNotifier {
     await refreshWhatsAppStatus();
     await refreshSettings();
     await loadCampaignHistory();
+    isAppReady = true;
+    notifyListeners();
+  }
+
+  Future<void> completeLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hasCompletedLogin', true);
+    hasCompletedLogin = true;
+    isAuthenticated = true;
+    notifyListeners();
+  }
+
+  Future<void> signOut() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hasCompletedLogin', false);
+    hasCompletedLogin = false;
+    notifyListeners();
   }
 
   Future<void> refreshWhatsAppStatus() async {

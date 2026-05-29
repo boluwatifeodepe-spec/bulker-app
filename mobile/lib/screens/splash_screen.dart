@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'package:bulker/providers/bulker_state.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,8 +15,10 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 900), () {
-      if (mounted) context.go('/auth');
+    Future<void>.delayed(const Duration(milliseconds: 1100), () {
+      if (!mounted) return;
+      final state = context.read<BulkerState>();
+      context.go(state.hasCompletedLogin ? '/' : '/auth');
     });
   }
 

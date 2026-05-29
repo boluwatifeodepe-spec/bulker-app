@@ -52,8 +52,11 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final location = GoRouterState.of(context).uri.path;
     final state = context.watch<BulkerState>();
     final photoPath = state.profilePhotoPath;
+    final profileEnabled =
+        state.hasCompletedLogin && location != '/auth' && location != '/splash';
     return Container(
       height: 53,
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -98,7 +101,7 @@ class _TopBar extends StatelessWidget {
           const Spacer(),
           InkWell(
             borderRadius: BorderRadius.circular(18),
-            onTap: () => context.go('/settings'),
+            onTap: profileEnabled ? () => context.go('/settings') : null,
             child: Container(
               width: 32,
               height: 32,

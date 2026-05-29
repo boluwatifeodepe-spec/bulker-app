@@ -1,5 +1,7 @@
+import 'package:bulker/providers/bulker_state.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -57,7 +59,10 @@ class _AuthScreenState extends State<AuthScreen> {
               backgroundColor: const Color(0xFF05060F),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            onPressed: () => context.go('/'),
+            onPressed: () async {
+              await context.read<BulkerState>().completeLogin();
+              if (context.mounted) context.go('/');
+            },
             child: Text(_signUp ? 'Create Account' : 'Sign In'),
           ),
         ),
