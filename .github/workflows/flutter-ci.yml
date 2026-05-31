@@ -44,6 +44,7 @@ jobs:
           cp android_assets/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml
           cp android_assets/ic_launcher_adaptive.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           cp android_assets/ic_launcher_adaptive.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+          perl -0pi -e 's/android:label="[^"]*"/android:label="Bulker"/' android/app/src/main/AndroidManifest.xml
           perl -0pi -e 's/android:icon="@mipmap\/ic_launcher"/android:icon="@mipmap\/ic_launcher"/' android/app/src/main/AndroidManifest.xml
           perl -0pi -e 's/android:roundIcon="@mipmap\/ic_launcher"/android:roundIcon="@mipmap\/ic_launcher_round"/' android/app/src/main/AndroidManifest.xml
           if ! grep -q "android.permission.READ_CONTACTS" android/app/src/main/AndroidManifest.xml; then
