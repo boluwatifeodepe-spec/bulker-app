@@ -299,6 +299,10 @@ async function runQueue({ queue, campaign, io }) {
       campaign.failed += 1;
       contact.status = 'failed';
       contact.error = error.message;
+      if (error.code === 'WHATSAPP_ENGINE_TIMEOUT') {
+        campaign.stoppedReason = error.message;
+        queue.cancelled = true;
+      }
       console.error(`Failed to send to ${contact.phone}:`, error);
       io.emit('campaign:progress', {
         campaignId: queue.id,

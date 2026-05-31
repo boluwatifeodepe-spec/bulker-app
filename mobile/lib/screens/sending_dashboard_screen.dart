@@ -226,6 +226,7 @@ class _ActivityTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sent = item.status == 'sent';
+    final failed = item.status == 'failed';
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -236,10 +237,22 @@ class _ActivityTile extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: sent ? const Color(0xFFE0F4E6) : const Color(0xFFE7E9ED),
+            backgroundColor: sent
+                ? const Color(0xFFE0F4E6)
+                : failed
+                    ? const Color(0xFFFFE8E8)
+                    : const Color(0xFFE7E9ED),
             child: Icon(
-              sent ? Icons.check_circle_outline : Icons.sync,
-              color: sent ? const Color(0xFF2F7D32) : const Color(0xFF6B7280),
+              sent
+                  ? Icons.check_circle_outline
+                  : failed
+                      ? Icons.error_outline
+                      : Icons.sync,
+              color: sent
+                  ? const Color(0xFF2F7D32)
+                  : failed
+                      ? const Color(0xFFB42318)
+                      : const Color(0xFF6B7280),
             ),
           ),
           const SizedBox(width: 14),
@@ -248,7 +261,11 @@ class _ActivityTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  sent ? 'Sent to ${item.name}' : 'Waiting for ${item.name}',
+                  sent
+                      ? 'Sent to ${item.name}'
+                      : failed
+                          ? 'Failed for ${item.name}'
+                          : 'Waiting for ${item.name}',
                   style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
                 ),
                 Text(item.phone, style: const TextStyle(fontSize: 11)),

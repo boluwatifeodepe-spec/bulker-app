@@ -10,6 +10,27 @@ const readyWaiters = [];
 const loginWaiters = [];
 let loginAvailable = false;
 
+function timeoutError(message) {
+  const error = new Error(message);
+  error.code = 'WHATSAPP_TIMEOUT';
+  return error;
+}
+
+function isProtocolTimeout(error) {
+  const message = error?.message || '';
+  return message.includes('Runtime.callFunctionOn timed out') ||
+    message.includes('Protocol error') ||
+    error?.code === 'WHATSAPP_TIMEOUT';
+}
+
+function withTimeout(promise, timeoutMs, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(timeoutError(message)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 function settleReadyWaiters(error) {
   while (readyWaiters.length) {
     const waiter = readyWaiters.shift();
@@ -52,7 +73,7 @@ function initWhatsApp(io) {
         '--disable-extensions',
         '--disable-gpu',
       ],
-      protocolTimeout: Number(process.env.WHATSAPP_PROTOCOL_TIMEOUT_MS || 300000),
+      protocolTimeout: Number(process.env.WHATSAPP_PROTOCOL_TIMEOUT_MS || 90000),
     },
     authTimeoutMs: Number(process.env.WHATSAPP_AUTH_TIMEOUT_MS || 180000),
     takeoverOnConflict: true,
@@ -179,11 +200,35 @@ async function requestPairingCode(phoneNumber) {
 async function sendMediaMessage({ phone, mediaPath, caption }) {
   await waitForReady();
   const chatId = `${normalizePhone(phone)}@c.us`;
-  if (!mediaPath) {
-    return client.sendMessage(chatId, caption);
+  const timeoutMs = Number(process.env.WHATSAPP_SEND_TIMEOUT_MS || 75000);
+  try {
+    if (!mediaPath) {
+      return await withTimeout(
+        client.sendMessage(chatId, caption),
+        timeoutMs,
+        'WhatsApp send timed out. Re-link WhatsApp and try again.',
+      );
+    }
+    const media = MessageMedia.fromFilePath(mediaPath);
+    return await withTimeout(
+      client.sendMessage(chatId, media, { caption }),
+      timeoutMs,
+      'WhatsApp media send timed out. Re-link WhatsApp and try again.',
+    );
+  } catch (error) {
+    if (isProtocolTimeout(error)) {
+      await resetWhatsAppClient();
+      ioRef?.emit('whatsapp:status', {
+        message: 'STATUS: WHATSAPP ENGINE RESET - RE-LINK REQUIRED',
+        connected: false,
+        error: error.message,
+      });
+      const friendly = new Error('WhatsApp engine timed out. Re-link WhatsApp, keep your phone online, then send again.');
+      friendly.code = 'WHATSAPP_ENGINE_TIMEOUT';
+      throw friendly;
+    }
+    throw error;
   }
-  const media = MessageMedia.fromFilePath(mediaPath);
-  return client.sendMessage(chatId, media, { caption });
 }
 
 async function getWhatsAppContacts() {
@@ -254,4 +299,5 @@ module.exports = {
   waitForReady,
   normalizePhone,
   getWhatsAppContacts,
+  isProtocolTimeout,
 };
