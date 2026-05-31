@@ -58,6 +58,7 @@ class BulkerState extends ChangeNotifier {
   String contactSearchQuery = '';
   bool isAuthenticated = false;
   bool isLoadingHistory = false;
+  bool isDarkMode = false;
   int duplicatesRemoved = 0;
   int invalidContactsRemoved = 0;
 
@@ -78,6 +79,7 @@ class BulkerState extends ChangeNotifier {
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     hasCompletedLogin = prefs.getBool('hasCompletedLogin') ?? false;
+    isDarkMode = prefs.getBool('isDarkMode') ?? false;
     notifyListeners();
     _socket.connect(
       onProgress: _handleProgress,
@@ -302,6 +304,7 @@ class BulkerState extends ChangeNotifier {
     contactError = null;
     notifyListeners();
     try {
+      await refreshWhatsAppStatusOnly();
       final imported = await _api.fetchWhatsAppContacts();
       final existing = contacts.map((contact) => contact.normalizedPhone).toSet();
       var added = 0;
@@ -313,7 +316,7 @@ class BulkerState extends ChangeNotifier {
       }
       if (added == 0 && showErrors) {
         contactError = whatsAppReady
-            ? 'No new WhatsApp contacts found.'
+            ? 'No new WhatsApp contacts found. Open WhatsApp, make sure chats are visible, then try again.'
             : 'Link WhatsApp first, then sync WhatsApp contacts.';
       } else if (showErrors) {
         contactError = 'Imported $added WhatsApp contacts.';
@@ -325,6 +328,14 @@ class BulkerState extends ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  Future<void> refreshWhatsAppStatusOnly() async {
+    final status = await _api.getWhatsAppStatus();
+    whatsAppReady = status['ready'] == true;
+    pairingStatus = whatsAppReady
+        ? 'STATUS: WHATSAPP CONNECTED'
+        : 'STATUS: WHATSAPP NOT LINKED';
   }
 
   void addContact(String name, String phone) {
@@ -409,7 +420,7 @@ class BulkerState extends ChangeNotifier {
 
   Future<bool> startCampaign() async {
     if (!message.isReady) {
-      lastError = 'Add media and caption before sending.';
+      lastError = 'Write a caption before sending.';
       notifyListeners();
       return false;
     }
@@ -477,7 +488,7 @@ class BulkerState extends ChangeNotifier {
 
   void _startCampaignPolling() {
     _campaignPoller?.cancel();
-    _campaignPoller = Timer.periodic(const Duration(seconds: 4), (_) {
+    _campaignPoller = Timer.periodic(const Duration(seconds: 1), (_) {
       refreshActiveCampaign();
     });
     refreshActiveCampaign();
@@ -556,6 +567,13 @@ class BulkerState extends ChangeNotifier {
     } catch (error) {
       whatsappAccounts.clear();
     }
+    notifyListeners();
+  }
+
+  Future<void> setDarkMode(bool value) async {
+    isDarkMode = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isDarkMode', value);
     notifyListeners();
   }
 

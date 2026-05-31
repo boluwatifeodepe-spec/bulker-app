@@ -233,18 +233,43 @@ async function sendMediaMessage({ phone, mediaPath, caption }) {
 
 async function getWhatsAppContacts() {
   await waitForReady();
-  const contacts = await client.getContacts();
-  return contacts
-    .filter((contact) => contact.isUser && !contact.isMe && normalizePhone(contact.number).length >= 9)
-    .map((contact, index) => {
-      const phone = normalizePhone(contact.number);
-      return {
-        id: contact.id?._serialized || `${phone}-${index}`,
-        name: contact.name || contact.pushname || contact.shortName || phone,
-        phone,
-        status: 'pending',
-      };
+  const byPhone = new Map();
+
+  const addContact = (contact, fallbackName) => {
+    const serialized = contact?.id?._serialized || '';
+    const rawPhone = contact?.number || serialized.split('@')[0] || '';
+    const phone = normalizePhone(rawPhone);
+    if (!phone || phone.length < 9 || contact?.isMe) return;
+    const name = contact?.name || contact?.pushname || contact?.shortName || fallbackName || phone;
+    byPhone.set(phone, {
+      id: serialized || phone,
+      name,
+      phone,
+      status: 'pending',
     });
+  };
+
+  const contacts = await withTimeout(
+    client.getContacts(),
+    Number(process.env.WHATSAPP_CONTACTS_TIMEOUT_MS || 45000),
+    'WhatsApp contacts took too long to load.',
+  ).catch(() => []);
+  for (const contact of contacts) {
+    if (contact?.isUser) addContact(contact);
+  }
+
+  const chats = await withTimeout(
+    client.getChats(),
+    Number(process.env.WHATSAPP_CONTACTS_TIMEOUT_MS || 45000),
+    'WhatsApp chats took too long to load.',
+  ).catch(() => []);
+  for (const chat of chats) {
+    if (chat?.isGroup) continue;
+    const contact = await chat.getContact().catch(() => null);
+    addContact(contact, chat?.name);
+  }
+
+  return [...byPhone.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 async function resetWhatsAppClient() {

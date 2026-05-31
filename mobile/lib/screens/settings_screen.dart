@@ -29,6 +29,7 @@ class SettingsScreen extends StatelessWidget {
           value: state.appVersion,
           icon: Icons.info_outline,
         ),
+        _ThemeTile(state: state),
         _SettingsTile(
           title: 'Sent today',
           value: '${state.safety['sentToday'] ?? 0}/${state.safety['dailyLimit'] ?? 150}',
@@ -169,6 +170,42 @@ class _ProfileCard extends StatelessWidget {
               Navigator.pop(context);
             },
             child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemeTile extends StatelessWidget {
+  const _ThemeTile({required this.state});
+
+  final BulkerState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE1E4E8)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            state.isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+            color: const Color(0xFF2F7D32),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text('Dark mode', style: TextStyle(fontWeight: FontWeight.w900)),
+          ),
+          Switch(
+            value: state.isDarkMode,
+            activeColor: const Color(0xFF2F7D32),
+            onChanged: state.setDarkMode,
           ),
         ],
       ),

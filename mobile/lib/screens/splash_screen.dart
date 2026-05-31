@@ -24,14 +24,14 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!mounted) return;
       final state = context.read<BulkerState>();
       if (state.isAppReady) {
-        context.go(state.hasCompletedLogin ? '/' : '/auth');
+        context.go(state.hasCompletedLogin ? '/compose' : '/auth');
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
     if (!mounted) return;
     final state = context.read<BulkerState>();
-      context.go(state.hasCompletedLogin ? '/' : '/auth');
+    context.go(state.hasCompletedLogin ? '/compose' : '/auth');
   }
 
   @override

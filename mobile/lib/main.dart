@@ -30,37 +30,49 @@ class BulkerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => BulkerState()..initialize(),
-      child: MaterialApp.router(
-        title: 'Bulker',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          scaffoldBackgroundColor: const Color(0xFFF7F8FA),
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF25D366),
-            primary: const Color(0xFF2F7D32),
-            secondary: const Color(0xFF25D366),
-            surface: Colors.white,
-          ),
-          fontFamily: 'Inter',
-          textTheme: const TextTheme(
-            headlineMedium: TextStyle(
-              color: Color(0xFF05060F),
-              fontSize: 23,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-            titleLarge: TextStyle(
-              color: Color(0xFF05060F),
-              fontSize: 21,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-            titleMedium: TextStyle(fontWeight: FontWeight.w800),
-            bodySmall: TextStyle(color: Color(0xFF111827), fontSize: 12),
-          ),
+      child: Consumer<BulkerState>(
+        builder: (context, state, _) => MaterialApp.router(
+          title: 'Bulker',
+          debugShowCheckedModeBanner: false,
+          themeMode: state.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          theme: _buildTheme(Brightness.light),
+          darkTheme: _buildTheme(Brightness.dark),
+          routerConfig: _router,
         ),
-        routerConfig: _router,
+      ),
+    );
+  }
+
+  ThemeData _buildTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF05060F);
+    return ThemeData(
+      brightness: brightness,
+      useMaterial3: true,
+      scaffoldBackgroundColor: isDark ? const Color(0xFF111418) : const Color(0xFFF7F8FA),
+      colorScheme: ColorScheme.fromSeed(
+        brightness: brightness,
+        seedColor: const Color(0xFF25D366),
+        primary: const Color(0xFF2F7D32),
+        secondary: const Color(0xFF25D366),
+        surface: isDark ? const Color(0xFF1A1E24) : Colors.white,
+      ),
+      fontFamily: 'Inter',
+      textTheme: TextTheme(
+        headlineMedium: TextStyle(
+          color: textColor,
+          fontSize: 23,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
+        ),
+        titleLarge: TextStyle(
+          color: textColor,
+          fontSize: 21,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
+        ),
+        titleMedium: TextStyle(color: textColor, fontWeight: FontWeight.w800),
+        bodySmall: TextStyle(color: textColor, fontSize: 12),
       ),
     );
   }
