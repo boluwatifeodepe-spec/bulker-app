@@ -126,6 +126,15 @@ class ApiService {
         .toList();
   }
 
+  Future<Map<String, dynamic>> fetchCampaign(String campaignId) async {
+    final response = await _client.get(_uri('/api/send/$campaignId'));
+    if (response.statusCode >= 400) {
+      throw Exception(_messageFromResponse(response, 'Could not load campaign'));
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    return Map<String, dynamic>.from(decoded['campaign'] as Map);
+  }
+
   Future<String> retryFailed(String campaignId) async {
     final response = await _client.post(_uri('/api/send/$campaignId/retry-failed'));
     if (response.statusCode >= 400) {

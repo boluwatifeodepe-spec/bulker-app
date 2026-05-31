@@ -260,6 +260,15 @@ async function runQueue({ queue, campaign, io }) {
     if (queue.cancelled) break;
 
     try {
+      io.emit('campaign:progress', {
+        campaignId: queue.id,
+        status: 'sending',
+        contact,
+        sent: campaign.sent,
+        failed: campaign.failed,
+        total: campaign.total,
+      });
+
       if (getDailySent() >= safety.dailyLimit) {
         contact.status = 'failed';
         contact.error = `Daily safety limit reached (${safety.dailyLimit}).`;

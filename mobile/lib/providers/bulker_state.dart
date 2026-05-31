@@ -28,6 +28,7 @@ class BulkerState extends ChangeNotifier {
   final FirebaseService _firebase;
   final SocketService _socket;
   final ImagePicker _picker = ImagePicker();
+  Timer? _campaignPoller;
 
   final CampaignMessage message = CampaignMessage();
   final List<Contact> contacts = [];
@@ -417,6 +418,12 @@ class BulkerState extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    await refreshWhatsAppStatus();
+    if (!whatsAppReady && message.scheduledFor == null) {
+      lastError = 'WhatsApp is not connected. Link WhatsApp first, then send again.';
+      notifyListeners();
+      return false;
+    }
     total = selectedContacts.length;
     sent = 0;
     failed = 0;
@@ -434,6 +441,7 @@ class BulkerState extends ChangeNotifier {
         scheduledFor: message.scheduledFor,
         contacts: selectedContacts,
       );
+      _startCampaignPolling();
       await loadCampaignHistory();
       return true;
     } catch (error) {
@@ -463,7 +471,45 @@ class BulkerState extends ChangeNotifier {
       await _api.cancelCampaign(id);
     }
     campaignId = null;
+    _stopCampaignPolling();
     notifyListeners();
+  }
+
+  void _startCampaignPolling() {
+    _campaignPoller?.cancel();
+    _campaignPoller = Timer.periodic(const Duration(seconds: 4), (_) {
+      refreshActiveCampaign();
+    });
+    refreshActiveCampaign();
+  }
+
+  void _stopCampaignPolling() {
+    _campaignPoller?.cancel();
+    _campaignPoller = null;
+  }
+
+  Future<void> refreshActiveCampaign() async {
+    final id = campaignId;
+    if (id == null) return;
+    try {
+      final campaign = await _api.fetchCampaign(id);
+      sent = campaign['sent'] as int? ?? sent;
+      failed = campaign['failed'] as int? ?? failed;
+      total = campaign['total'] as int? ?? total;
+      final status = campaign['status'] as String? ?? '';
+      final stoppedReason = campaign['stoppedReason'] as String?;
+      if (stoppedReason != null && stoppedReason.isNotEmpty) {
+        lastError = stoppedReason;
+      }
+      if (status == 'complete' || status == 'cancelled' || status == 'stopped') {
+        campaignComplete = true;
+        _stopCampaignPolling();
+        await loadCampaignHistory();
+      }
+      notifyListeners();
+    } catch (_) {
+      // Socket.IO remains the primary live path; polling is only a backup.
+    }
   }
 
   Future<void> loadCampaignHistory() async {
@@ -558,11 +604,14 @@ class BulkerState extends ChangeNotifier {
     failed = data['failed'] as int? ?? failed;
     total = data['total'] as int? ?? total;
     campaignComplete = true;
+    _stopCampaignPolling();
+    loadCampaignHistory();
     notifyListeners();
   }
 
   @override
   void dispose() {
+    _stopCampaignPolling();
     _socket.dispose();
     super.dispose();
   }

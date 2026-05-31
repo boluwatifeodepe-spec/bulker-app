@@ -17,6 +17,26 @@ class ComposeMessageScreen extends StatefulWidget {
 
 class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
   bool _previewEnabled = false;
+  bool _syncedInitialText = false;
+  final _campaignNameController = TextEditingController();
+  final _captionController = TextEditingController();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_syncedInitialText) return;
+    final message = context.read<BulkerState>().message;
+    _campaignNameController.text = message.name;
+    _captionController.text = message.caption;
+    _syncedInitialText = true;
+  }
+
+  @override
+  void dispose() {
+    _campaignNameController.dispose();
+    _captionController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +54,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
         ),
         const SizedBox(height: 22),
         TextField(
+          controller: _campaignNameController,
           onChanged: state.updateCampaignName,
           decoration: InputDecoration(
             labelText: 'Campaign name',
@@ -83,6 +104,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: TextField(
+            controller: _captionController,
             maxLines: null,
             maxLength: AppConstants.maxCaptionLength,
             onChanged: state.updateCaption,

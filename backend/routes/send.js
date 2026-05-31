@@ -9,6 +9,7 @@ const {
   resumeCampaign,
 } = require('../services/messageQueue');
 const { upload } = require('../services/uploads');
+const { getWhatsAppStatus } = require('../services/whatsapp');
 
 const router = express.Router();
 
@@ -21,6 +22,11 @@ router.post('/', upload.single('media'), (req, res) => {
     }
     if (!contacts.length) {
       return res.status(400).json({ error: 'At least one contact is required.' });
+    }
+    if (!req.body.scheduledFor && !getWhatsAppStatus().ready) {
+      return res.status(400).json({
+        error: 'WhatsApp is not connected. Link WhatsApp first, then send again.',
+      });
     }
 
     const campaignId = createCampaign({
