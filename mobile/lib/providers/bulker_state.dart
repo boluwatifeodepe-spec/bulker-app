@@ -104,6 +104,47 @@ class BulkerState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String?> signInWithEmail({
+    required String email,
+    required String password,
+    required bool createAccount,
+  }) async {
+    final cleanEmail = email.trim();
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(cleanEmail)) {
+      return 'Enter a valid email address.';
+    }
+    if (password.length < 6) {
+      return 'Password must be at least 6 characters.';
+    }
+
+    try {
+      final user = createAccount
+          ? await _firebase.createAccountWithEmail(
+              email: cleanEmail,
+              password: password,
+            )
+          : await _firebase.signInWithEmail(
+              email: cleanEmail,
+              password: password,
+            );
+      isAuthenticated = user != null || !_firebase.isAvailable;
+      await completeLogin();
+      return null;
+    } catch (error) {
+      final text = error.toString();
+      if (text.contains('user-not-found') || text.contains('wrong-password')) {
+        return 'Email or password is not correct.';
+      }
+      if (text.contains('email-already-in-use')) {
+        return 'This email already has an account. Sign in instead.';
+      }
+      if (text.contains('weak-password')) {
+        return 'Password is too weak. Use at least 6 characters.';
+      }
+      return text.replaceFirst('Exception: ', '');
+    }
+  }
+
   Future<void> signOut() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('hasCompletedLogin', false);

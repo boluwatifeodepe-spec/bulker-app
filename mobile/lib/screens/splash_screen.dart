@@ -15,11 +15,23 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 1100), () {
+    _routeAfterStartup();
+  }
+
+  Future<void> _routeAfterStartup() async {
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    for (var index = 0; index < 30; index++) {
       if (!mounted) return;
       final state = context.read<BulkerState>();
+      if (state.isAppReady) {
+        context.go(state.hasCompletedLogin ? '/' : '/auth');
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    if (!mounted) return;
+    final state = context.read<BulkerState>();
       context.go(state.hasCompletedLogin ? '/' : '/auth');
-    });
   }
 
   @override

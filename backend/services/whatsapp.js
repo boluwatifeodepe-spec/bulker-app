@@ -45,10 +45,16 @@ function initWhatsApp(io) {
       executablePath:
         process.env.PUPPETEER_EXECUTABLE_PATH ||
         '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      protocolTimeout: Number(process.env.WHATSAPP_PROTOCOL_TIMEOUT_MS || 180000),
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-extensions',
+        '--disable-gpu',
+      ],
+      protocolTimeout: Number(process.env.WHATSAPP_PROTOCOL_TIMEOUT_MS || 300000),
     },
-    authTimeoutMs: Number(process.env.WHATSAPP_AUTH_TIMEOUT_MS || 120000),
+    authTimeoutMs: Number(process.env.WHATSAPP_AUTH_TIMEOUT_MS || 180000),
     takeoverOnConflict: true,
     takeoverTimeoutMs: 0,
   });
@@ -166,7 +172,7 @@ async function requestPairingCode(phoneNumber) {
   if (!normalized) {
     throw new Error('Phone number must include a country code.');
   }
-  await waitForLoginAvailable(Number(process.env.WHATSAPP_PAIRING_TIMEOUT_MS || 120000));
+  await waitForLoginAvailable(Number(process.env.WHATSAPP_PAIRING_TIMEOUT_MS || 180000));
   return client.requestPairingCode(normalized);
 }
 

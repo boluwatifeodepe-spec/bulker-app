@@ -35,6 +35,32 @@ class FirebaseService {
     return (await auth.signInAnonymously()).user;
   }
 
+  Future<User?> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    final auth = _safeAuth;
+    if (auth == null) return null;
+    return (await auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    ))
+        .user;
+  }
+
+  Future<User?> createAccountWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    final auth = _safeAuth;
+    if (auth == null) return null;
+    return (await auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    ))
+        .user;
+  }
+
   CollectionReference<Map<String, dynamic>>? contactsRef() {
     final auth = _safeAuth;
     final firestore = _safeFirestore;

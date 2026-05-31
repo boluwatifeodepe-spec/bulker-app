@@ -13,6 +13,28 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   bool _signUp = false;
   bool _showPassword = false;
+  bool _loading = false;
+  String? _error;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (context.read<BulkerState>().hasCompletedLogin) {
+        context.go('/');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +49,7 @@ class _AuthScreenState extends State<AuthScreen> {
         const Text('Sign in to manage contacts, campaigns, and WhatsApp sessions.'),
         const SizedBox(height: 28),
         TextField(
+          controller: _emailController,
           keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(
             labelText: 'Email',
@@ -37,6 +60,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         const SizedBox(height: 14),
         TextField(
+          controller: _passwordController,
           obscureText: !_showPassword,
           decoration: InputDecoration(
             labelText: 'Password',
@@ -52,6 +76,23 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ),
         const SizedBox(height: 18),
+        if (_error != null) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFE8E8),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              _error!,
+              style: const TextStyle(
+                color: Color(0xFFB42318),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         SizedBox(
           height: 56,
           child: FilledButton(
@@ -59,11 +100,14 @@ class _AuthScreenState extends State<AuthScreen> {
               backgroundColor: const Color(0xFF05060F),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            onPressed: () async {
-              await context.read<BulkerState>().completeLogin();
-              if (context.mounted) context.go('/');
-            },
-            child: Text(_signUp ? 'Create Account' : 'Sign In'),
+            onPressed: _loading ? null : _submit,
+            child: Text(
+              _loading
+                  ? 'Please wait...'
+                  : _signUp
+                      ? 'Create Account'
+                      : 'Sign In',
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -73,5 +117,25 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final error = await context.read<BulkerState>().signInWithEmail(
+          email: _emailController.text,
+          password: _passwordController.text,
+          createAccount: _signUp,
+        );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _error = error;
+    });
+    if (error == null) {
+      context.go('/');
+    }
   }
 }

@@ -14,6 +14,7 @@ const contactsRoutes = require('./routes/contacts');
 const sendRoutes = require('./routes/send');
 const settingsRoutes = require('./routes/settings');
 const whatsappRoutes = require('./routes/whatsapp');
+const { initWhatsApp } = require('./services/whatsapp');
 const { ensureUploadDir, upload } = require('./services/uploads');
 const { initFirebase } = require('./services/firebase');
 const { createCampaign } = require('./services/messageQueue');
@@ -392,4 +393,7 @@ io.on('connection', (socket) => {
 const port = Number(process.env.PORT || 5000);
 server.listen(port, () => {
   console.log(`Bulker backend listening on ${port}`);
+  if (process.env.WHATSAPP_PREWARM !== 'false') {
+    setTimeout(() => initWhatsApp(io), 1500);
+  }
 });
