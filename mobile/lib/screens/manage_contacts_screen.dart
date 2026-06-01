@@ -11,6 +11,7 @@ class ManageContactsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BulkerState>();
+    final scheme = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,7 +87,7 @@ class ManageContactsScreen extends StatelessWidget {
                   hintText: 'Search 2,400+ contacts...',
                   hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF77808A)),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: scheme.surface,
                   border: OutlineInputBorder(
                     borderSide: BorderSide.none,
                     borderRadius: BorderRadius.circular(10),
@@ -116,7 +117,7 @@ class ManageContactsScreen extends StatelessWidget {
                     onPressed: state.selectAll,
                     child: const Text(
                       'Select All',
-                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900),
+                      style: TextStyle(fontWeight: FontWeight.w900),
                     ),
                   ),
                 ],
@@ -209,7 +210,7 @@ class _WhatsAppConnectionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFE1E4E8)),
       ),
@@ -257,7 +258,7 @@ class _EmptyContacts extends StatelessWidget {
       margin: const EdgeInsets.only(top: 28),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFE1E4E8)),
       ),
@@ -300,8 +301,8 @@ class _ActionButton extends StatelessWidget {
       height: 58,
       child: OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
-          backgroundColor: filled ? const Color(0xFF05060F) : Colors.white,
-          foregroundColor: filled ? Colors.white : const Color(0xFF05060F),
+          backgroundColor: filled ? const Color(0xFF05060F) : Theme.of(context).colorScheme.surface,
+          foregroundColor: filled ? Colors.white : Theme.of(context).colorScheme.onSurface,
           side: const BorderSide(color: Color(0xFF05060F), width: 2),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
@@ -350,8 +351,8 @@ class _ContactRow extends StatelessWidget {
       ),
       child: Container(
         height: 67,
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFE1E4E8))),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
         ),
         child: Row(
           children: [
@@ -389,7 +390,7 @@ class _ContactRow extends StatelessWidget {
                     contact.phone,
                     style: TextStyle(
                       fontSize: 12,
-                      color: contact.isValid ? const Color(0xFF05060F) : const Color(0xFFD12C2C),
+                      color: contact.isValid ? Theme.of(context).colorScheme.onSurface : const Color(0xFFD12C2C),
                       fontWeight: FontWeight.w700,
                     ),
                   ),

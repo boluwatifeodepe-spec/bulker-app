@@ -24,6 +24,7 @@ class _ConnectWhatsAppScreenState extends State<ConnectWhatsAppScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BulkerState>();
+    final scheme = Theme.of(context).colorScheme;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
@@ -43,7 +44,7 @@ class _ConnectWhatsAppScreenState extends State<ConnectWhatsAppScreen> {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: scheme.surface,
             borderRadius: BorderRadius.circular(20),
             boxShadow: const [
               BoxShadow(color: Color(0x12000000), blurRadius: 18, offset: Offset(0, 8)),
@@ -139,7 +140,7 @@ class _ConnectWhatsAppScreenState extends State<ConnectWhatsAppScreen> {
                 PrimaryButton(
                   label: 'Continue to Compose',
                   icon: Icons.arrow_forward,
-                  color: const Color(0xFF05060F),
+              color: const Color(0xFF05060F),
                   onPressed: () => context.go('/compose'),
                 ),
               ],
@@ -173,7 +174,7 @@ class _ConnectWhatsAppScreenState extends State<ConnectWhatsAppScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: scheme.surface,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: const Color(0xFFE3E6EA)),
             ),
@@ -286,11 +287,12 @@ class _InstructionStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFE9ECEF)),
       ),
@@ -301,8 +303,8 @@ class _InstructionStep extends StatelessWidget {
             backgroundColor: const Color(0xFF05060F),
             child: Text(
               '$number',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: scheme.surface,
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
               ),

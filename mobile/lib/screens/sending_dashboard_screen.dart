@@ -11,6 +11,7 @@ class SendingDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BulkerState>();
+    final scheme = Theme.of(context).colorScheme;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
@@ -46,7 +47,7 @@ class SendingDashboardScreen extends StatelessWidget {
           height: 398,
           padding: const EdgeInsets.all(26),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: scheme.surface,
             borderRadius: BorderRadius.circular(8),
             boxShadow: const [BoxShadow(color: Color(0x11000000), blurRadius: 18)],
           ),
@@ -130,8 +131,8 @@ class SendingDashboardScreen extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: state.campaignId == null ? null : state.togglePause,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.black,
-                    side: const BorderSide(color: Colors.black, width: 2),
+                    foregroundColor: scheme.onSurface,
+                    side: BorderSide(color: scheme.onSurface, width: 2),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     textStyle: const TextStyle(fontWeight: FontWeight.w900),
                   ),
@@ -231,7 +232,7 @@ class _ActivityTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

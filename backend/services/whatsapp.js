@@ -96,12 +96,31 @@ function initWhatsApp(io) {
     });
   });
 
+  client.on('loading_screen', () => {
+    loginAvailable = true;
+    ioRef?.emit('whatsapp:status', {
+      message: 'STATUS: WHATSAPP LOGIN SCREEN OPENING',
+    });
+    settleLoginWaiters();
+  });
+
   client.on('qr', () => {
     loginAvailable = true;
     ioRef?.emit('whatsapp:status', {
       message: 'STATUS: READY FOR PAIRING CODE',
     });
     settleLoginWaiters();
+  });
+
+  client.on('auth_failure', (message) => {
+    ready = false;
+    initializing = false;
+    loginAvailable = false;
+    initError = new Error(`WhatsApp authentication failed: ${message}`);
+    ioRef?.emit('whatsapp:status', {
+      message: `STATUS: WHATSAPP AUTH FAILED (${message})`,
+      connected: false,
+    });
   });
 
   client.on('disconnected', (reason) => {
@@ -155,6 +174,17 @@ async function waitForLoginAvailable(timeoutMs = 60000) {
   });
 }
 
+async function waitForClientPage(timeoutMs = 90000) {
+  if (!client) initWhatsApp(ioRef);
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (initError) throw initError;
+    if (client?.pupPage) return;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error('WhatsApp browser did not open. Restart the backend and try again.');
+}
+
 async function waitForReady(timeoutMs = 60000) {
   if (ready) return;
   if (!client) initWhatsApp(ioRef);
@@ -179,12 +209,13 @@ async function waitForReady(timeoutMs = 60000) {
 }
 
 async function requestPairingCode(phoneNumber) {
-  if (!client) initWhatsApp(ioRef);
+  if (ready) {
+    throw new Error('WhatsApp is already connected.');
+  }
   if (initError) {
     const message = initError.message || '';
     if (message.includes('Runtime.callFunctionOn timed out') || message.includes('Protocol error')) {
       await resetWhatsAppClient();
-      initWhatsApp(ioRef);
     } else {
       throw initError;
     }
@@ -193,8 +224,27 @@ async function requestPairingCode(phoneNumber) {
   if (!normalized) {
     throw new Error('Phone number must include a country code.');
   }
-  await waitForLoginAvailable(Number(process.env.WHATSAPP_PAIRING_TIMEOUT_MS || 180000));
-  return client.requestPairingCode(normalized);
+  if (!client) initWhatsApp(ioRef);
+
+  await waitForClientPage(Number(process.env.WHATSAPP_PAIRING_TIMEOUT_MS || 180000));
+  await waitForLoginAvailable(45000).catch(() => {});
+
+  const requestCode = () => withTimeout(
+    client.requestPairingCode(normalized, true),
+    Number(process.env.WHATSAPP_PAIRING_REQUEST_TIMEOUT_MS || 60000),
+    'WhatsApp pairing code request timed out. Try again.',
+  );
+
+  try {
+    return await requestCode();
+  } catch (error) {
+    if (!isProtocolTimeout(error)) throw error;
+    await resetWhatsAppClient();
+    initWhatsApp(ioRef);
+    await waitForClientPage(Number(process.env.WHATSAPP_PAIRING_TIMEOUT_MS || 180000));
+    await waitForLoginAvailable(45000).catch(() => {});
+    return requestCode();
+  }
 }
 
 async function sendMediaMessage({ phone, mediaPath, caption }) {
@@ -306,6 +356,9 @@ function normalizePhone(phoneNumber) {
 }
 
 function getWhatsAppStatus() {
+  if (!ready && client?.info?.wid) {
+    ready = true;
+  }
   return {
     initialized: Boolean(client),
     ready,

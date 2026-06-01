@@ -42,6 +42,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<BulkerState>();
     final mediaPath = state.message.mediaPath;
+    final scheme = Theme.of(context).colorScheme;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 30, 20, 22),
@@ -60,7 +61,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
             labelText: 'Campaign name',
             hintText: 'Easter Sunday Message',
             filled: true,
-            fillColor: Colors.white,
+            fillColor: scheme.surface,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
         ),
@@ -71,7 +72,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
           child: Container(
             height: 230,
             decoration: BoxDecoration(
-              color: mediaPath == null ? Colors.white : Colors.black,
+              color: mediaPath == null ? scheme.surface : Colors.black,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: const Color(0xFFB7BCC3),
@@ -100,7 +101,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
           height: 140,
           padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: scheme.surface,
             borderRadius: BorderRadius.circular(8),
           ),
           child: TextField(
@@ -126,7 +127,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: scheme.surface,
             borderRadius: BorderRadius.circular(10),
             boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 12)],
           ),
@@ -301,7 +302,7 @@ class _ScheduleTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(

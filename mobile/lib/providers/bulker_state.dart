@@ -29,6 +29,7 @@ class BulkerState extends ChangeNotifier {
   final SocketService _socket;
   final ImagePicker _picker = ImagePicker();
   Timer? _campaignPoller;
+  Timer? _whatsAppPoller;
 
   final CampaignMessage message = CampaignMessage();
   final List<Contact> contacts = [];
@@ -188,6 +189,7 @@ class BulkerState extends ChangeNotifier {
     try {
       pairingCode = await _api.requestPairingCode(normalized);
       pairingStatus = 'STATUS: WAITING FOR LINK...';
+      _startWhatsAppPolling();
     } catch (error) {
       pairingCode = null;
       pairingStatus = 'STATUS: PAIRING FAILED';
@@ -499,6 +501,19 @@ class BulkerState extends ChangeNotifier {
     _campaignPoller = null;
   }
 
+  void _startWhatsAppPolling() {
+    _whatsAppPoller?.cancel();
+    var ticks = 0;
+    _whatsAppPoller = Timer.periodic(const Duration(seconds: 2), (timer) async {
+      ticks++;
+      await refreshWhatsAppStatus();
+      if (whatsAppReady || ticks >= 90) {
+        timer.cancel();
+        _whatsAppPoller = null;
+      }
+    });
+  }
+
   Future<void> refreshActiveCampaign() async {
     final id = campaignId;
     if (id == null) return;
@@ -610,6 +625,8 @@ class BulkerState extends ChangeNotifier {
     whatsAppReady = data['connected'] as bool? ?? whatsAppReady;
     if (whatsAppReady && contacts.isEmpty) {
       importWhatsAppContacts(showErrors: false);
+      _whatsAppPoller?.cancel();
+      _whatsAppPoller = null;
     }
     if (data['error'] != null) {
       lastError = '${data['error']}';
@@ -630,6 +647,7 @@ class BulkerState extends ChangeNotifier {
   @override
   void dispose() {
     _stopCampaignPolling();
+    _whatsAppPoller?.cancel();
     _socket.dispose();
     super.dispose();
   }

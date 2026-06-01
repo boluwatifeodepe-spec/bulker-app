@@ -24,7 +24,7 @@ class _AuthScreenState extends State<AuthScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (context.read<BulkerState>().hasCompletedLogin) {
-        context.go('/');
+        context.go('/compose');
       }
     });
   }
@@ -38,6 +38,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return ListView(
       padding: const EdgeInsets.fromLTRB(22, 32, 22, 20),
       children: [
@@ -55,7 +56,7 @@ class _AuthScreenState extends State<AuthScreen> {
             labelText: 'Email',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: scheme.surface,
           ),
         ),
         const SizedBox(height: 14),
@@ -66,7 +67,7 @@ class _AuthScreenState extends State<AuthScreen> {
             labelText: 'Password',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: scheme.surface,
             suffixIcon: IconButton(
               onPressed: () => setState(() => _showPassword = !_showPassword),
               icon: Icon(
@@ -135,7 +136,7 @@ class _AuthScreenState extends State<AuthScreen> {
       _error = error;
     });
     if (error == null) {
-      context.go('/');
+      context.go('/compose');
     }
   }
 }

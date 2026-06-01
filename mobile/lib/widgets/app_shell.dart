@@ -11,12 +11,12 @@ class AppShell extends StatelessWidget {
   final Widget child;
 
   static const green = Color(0xFF6DF084);
-  static const ink = Color(0xFF05060F);
 
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     final showTabs = location != '/' && location != '/auth';
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: SafeArea(
@@ -24,11 +24,11 @@ class AppShell extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 430),
             child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8F9FA),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
                 border: Border(
-                  left: BorderSide(color: Color(0xFFE0E3E7)),
-                  right: BorderSide(color: Color(0xFFE0E3E7)),
+                  left: BorderSide(color: scheme.outlineVariant),
+                  right: BorderSide(color: scheme.outlineVariant),
                 ),
               ),
               child: Column(
@@ -55,14 +55,15 @@ class _TopBar extends StatelessWidget {
     final location = GoRouterState.of(context).uri.path;
     final state = context.watch<BulkerState>();
     final photoPath = state.profilePhotoPath;
+    final scheme = Theme.of(context).colorScheme;
     final profileEnabled =
         state.hasCompletedLogin && location != '/auth' && location != '/splash';
     return Container(
       height: 53,
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        boxShadow: const [
           BoxShadow(
             color: Color(0x14000000),
             blurRadius: 10,
@@ -140,8 +141,8 @@ class _BottomTabs extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(0, 0, 0, 0),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFD8DCE2)),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
       ),
       child: Row(
@@ -191,8 +192,8 @@ class _ConnectTabs extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFD8DCE2)),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
       ),
       child: Row(
@@ -237,6 +238,7 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final inkColor = Theme.of(context).colorScheme.onSurface;
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: onTap,
@@ -251,14 +253,14 @@ class _TabButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: active ? const Color(0xFF287A35) : AppShell.ink),
+            Icon(icon, size: 18, color: active ? const Color(0xFF287A35) : inkColor),
             const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
-                color: active ? const Color(0xFF287A35) : AppShell.ink,
+                color: active ? const Color(0xFF287A35) : inkColor,
               ),
             ),
           ],
