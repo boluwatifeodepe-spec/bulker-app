@@ -622,6 +622,9 @@ class BulkerState extends ChangeNotifier {
       } else {
         activity.insert(0, item);
       }
+      if (activity.length > 80) {
+        activity.removeRange(80, activity.length);
+      }
     }
     notifyListeners();
   }

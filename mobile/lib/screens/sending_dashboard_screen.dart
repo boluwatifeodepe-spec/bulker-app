@@ -228,6 +228,8 @@ class _ActivityTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final sent = item.status == 'sent';
     final failed = item.status == 'failed';
+    final retrying = item.status == 'retrying';
+    final sending = item.status == 'sending';
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -242,17 +244,23 @@ class _ActivityTile extends StatelessWidget {
                 ? const Color(0xFFE0F4E6)
                 : failed
                     ? const Color(0xFFFFE8E8)
+                    : retrying
+                        ? const Color(0xFFFFF2D6)
                     : const Color(0xFFE7E9ED),
             child: Icon(
               sent
                   ? Icons.check_circle_outline
                   : failed
                       ? Icons.error_outline
+                      : retrying
+                          ? Icons.refresh
                       : Icons.sync,
               color: sent
                   ? const Color(0xFF2F7D32)
                   : failed
                       ? const Color(0xFFB42318)
+                      : retrying
+                          ? const Color(0xFF9A6A00)
                       : const Color(0xFF6B7280),
             ),
           ),
@@ -266,7 +274,11 @@ class _ActivityTile extends StatelessWidget {
                       ? 'Sent to ${item.name}'
                       : failed
                           ? 'Failed for ${item.name}'
-                          : 'Waiting for ${item.name}',
+                          : retrying
+                              ? 'Retrying ${item.name}'
+                              : sending
+                                  ? 'Sending to ${item.name}'
+                                  : 'Waiting for ${item.name}',
                   style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
                 ),
                 Text(item.phone, style: const TextStyle(fontSize: 11)),

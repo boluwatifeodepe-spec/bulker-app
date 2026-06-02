@@ -11,19 +11,26 @@ const scheduledCampaigns = new Map();
 const dailyUsage = new Map();
 
 function safetyConfig() {
-  const configuredMinDelay = Number(process.env.MIN_MESSAGE_DELAY_MS || process.env.MESSAGE_DELAY_MS || 6000);
-  const configuredMaxDelay = Number(process.env.MAX_MESSAGE_DELAY_MS || 14000);
-  const configuredVideoMinDelay = Number(process.env.MIN_VIDEO_DELAY_MS || process.env.VIDEO_DELAY_MS || 12000);
-  const configuredVideoMaxDelay = Number(process.env.MAX_VIDEO_DELAY_MS || 25000);
+  const configuredMinDelay = Number(process.env.MIN_MESSAGE_DELAY_MS || process.env.MESSAGE_DELAY_MS || 3000);
+  const configuredMaxDelay = Number(process.env.MAX_MESSAGE_DELAY_MS || 5000);
+  const configuredVideoMinDelay = Number(process.env.MIN_VIDEO_DELAY_MS || process.env.VIDEO_DELAY_MS || 5000);
+  const configuredVideoMaxDelay = Number(process.env.MAX_VIDEO_DELAY_MS || 9000);
   return {
-    dailyLimit: Number(process.env.DAILY_SEND_LIMIT || 150),
-    minDelayMs: Math.min(configuredMinDelay, 6000),
-    maxDelayMs: Math.min(configuredMaxDelay, 14000),
-    videoMinDelayMs: Math.min(configuredVideoMinDelay, 12000),
-    videoMaxDelayMs: Math.min(configuredVideoMaxDelay, 25000),
-    stopAfterFailures: Number(process.env.STOP_AFTER_FAILURES || 8),
-    stopFailureRate: Number(process.env.STOP_FAILURE_RATE || 0.55),
+    dailyLimit: Number(process.env.DAILY_SEND_LIMIT || 250),
+    minDelayMs: clamp(configuredMinDelay, 3000, 5000),
+    maxDelayMs: clamp(configuredMaxDelay, 3000, 5000),
+    videoMinDelayMs: clamp(configuredVideoMinDelay, 5000, 9000),
+    videoMaxDelayMs: clamp(configuredVideoMaxDelay, 5000, 9000),
+    retryAttempts: Number(process.env.MESSAGE_RETRY_ATTEMPTS || 2),
+    retryDelayMs: Number(process.env.MESSAGE_RETRY_DELAY_MS || 5000),
+    stopAfterFailures: Number(process.env.STOP_AFTER_FAILURES || 25),
+    stopFailureRate: Number(process.env.STOP_FAILURE_RATE || 0.85),
   };
+}
+
+function clamp(value, min, max) {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(value, max));
 }
 
 function wait(ms) {
@@ -153,6 +160,7 @@ function createCampaign({
       ...contact,
       status: 'pending',
       error: null,
+      attempts: 0,
     })),
   };
   campaigns.set(campaignId, campaign);
@@ -263,61 +271,23 @@ async function runQueue({ queue, campaign, io }) {
     }
     if (queue.cancelled) break;
 
-    try {
-      io.emit('campaign:progress', {
-        campaignId: queue.id,
-        status: 'sending',
-        contact,
-        sent: campaign.sent,
-        failed: campaign.failed,
-        total: campaign.total,
-      });
-
-      if (getDailySent() >= safety.dailyLimit) {
-        contact.status = 'failed';
-        contact.error = `Daily safety limit reached (${safety.dailyLimit}).`;
-        campaign.failed += 1;
-        campaign.stoppedReason = contact.error;
-        queue.cancelled = true;
-        break;
-      }
-
-      await sendMediaMessage({
-        phone: contact.phone,
-        mediaPath: campaign.mediaPath,
-        caption: campaign.caption,
-      });
-      campaign.sent += 1;
-      incrementDailySent();
-      contact.status = 'sent';
-      contact.error = null;
-      io.emit('campaign:progress', {
-        campaignId: queue.id,
-        status: 'sent',
-        contact,
-        sent: campaign.sent,
-        failed: campaign.failed,
-        total: campaign.total,
-      });
-    } catch (error) {
-      campaign.failed += 1;
+    if (getDailySent() >= safety.dailyLimit) {
       contact.status = 'failed';
-      contact.error = error.message;
-      if (error.code === 'WHATSAPP_ENGINE_TIMEOUT') {
-        campaign.stoppedReason = error.message;
-        queue.cancelled = true;
-      }
-      console.error(`Failed to send to ${contact.phone}:`, error);
-      io.emit('campaign:progress', {
-        campaignId: queue.id,
-        status: 'failed',
-        contact,
-        error: error.message,
-        sent: campaign.sent,
-        failed: campaign.failed,
-        total: campaign.total,
-      });
+      contact.error = `Daily safety limit reached (${safety.dailyLimit}).`;
+      campaign.failed += 1;
+      campaign.stoppedReason = contact.error;
+      queue.cancelled = true;
+      break;
     }
+
+    const result = await sendWithRetries({
+      queue,
+      campaign,
+      contact,
+      io,
+      safety,
+    });
+    if (result === 'stop') break;
     persistCampaign(campaign).catch(() => {});
 
     if (campaign.failed >= safety.stopAfterFailures) {
@@ -344,6 +314,92 @@ async function runQueue({ queue, campaign, io }) {
     cancelled: queue.cancelled,
   });
   queues.delete(queue.id);
+}
+
+async function sendWithRetries({ queue, campaign, contact, io, safety }) {
+  const maxAttempts = Math.max(1, safety.retryAttempts + 1);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (queue.cancelled) return 'stop';
+    contact.attempts = attempt;
+    contact.status = attempt === 1 ? 'sending' : 'retrying';
+    io.emit('campaign:progress', {
+      campaignId: queue.id,
+      status: contact.status,
+      contact,
+      sent: campaign.sent,
+      failed: campaign.failed,
+      total: campaign.total,
+    });
+
+    try {
+      await sendMediaMessage({
+        phone: contact.phone,
+        mediaPath: campaign.mediaPath,
+        caption: campaign.caption,
+      });
+      campaign.sent += 1;
+      incrementDailySent();
+      contact.status = 'sent';
+      contact.error = null;
+      io.emit('campaign:progress', {
+        campaignId: queue.id,
+        status: 'sent',
+        contact,
+        sent: campaign.sent,
+        failed: campaign.failed,
+        total: campaign.total,
+      });
+      return 'sent';
+    } catch (error) {
+      contact.error = error.message;
+      const canRetry = attempt < maxAttempts && error.code !== 'WHATSAPP_INVALID_NUMBER';
+      console.error(`Failed to send to ${contact.phone} on attempt ${attempt}/${maxAttempts}:`, error);
+
+      if (error.code === 'WHATSAPP_ENGINE_TIMEOUT') {
+        campaign.stoppedReason = error.message;
+        queue.cancelled = true;
+        campaign.failed += 1;
+        contact.status = 'failed';
+        emitFailure({ queue, campaign, contact, io, error });
+        return 'stop';
+      }
+
+      if (canRetry) {
+        contact.status = 'retrying';
+        io.emit('campaign:progress', {
+          campaignId: queue.id,
+          status: 'retrying',
+          contact,
+          error: error.message,
+          sent: campaign.sent,
+          failed: campaign.failed,
+          total: campaign.total,
+        });
+        await wait(safety.retryDelayMs);
+        continue;
+      }
+
+      campaign.failed += 1;
+      contact.status = 'failed';
+      emitFailure({ queue, campaign, contact, io, error });
+      return 'failed';
+    }
+  }
+
+  return 'failed';
+}
+
+function emitFailure({ queue, campaign, contact, io, error }) {
+  io.emit('campaign:progress', {
+    campaignId: queue.id,
+    status: 'failed',
+    contact,
+    error: error.message,
+    sent: campaign.sent,
+    failed: campaign.failed,
+    total: campaign.total,
+  });
 }
 
 module.exports = {
