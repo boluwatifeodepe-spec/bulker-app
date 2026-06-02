@@ -73,8 +73,12 @@ function initWhatsApp(io) {
         '--disable-dev-shm-usage',
         '--disable-extensions',
         '--disable-gpu',
+        '--no-zygote',
+        '--single-process',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
       ],
-      protocolTimeout: Number(process.env.WHATSAPP_PROTOCOL_TIMEOUT_MS || 90000),
+      protocolTimeout: Number(process.env.WHATSAPP_PROTOCOL_TIMEOUT_MS || 180000),
     },
     authTimeoutMs: Number(process.env.WHATSAPP_AUTH_TIMEOUT_MS || 180000),
     takeoverOnConflict: true,
@@ -84,6 +88,7 @@ function initWhatsApp(io) {
   client.on('ready', () => {
     ready = true;
     initializing = false;
+    loginAvailable = false;
     ioRef?.emit('whatsapp:status', {
       message: 'STATUS: WHATSAPP CONNECTED',
       connected: true,
@@ -92,6 +97,7 @@ function initWhatsApp(io) {
   });
 
   client.on('authenticated', () => {
+    loginAvailable = false;
     ioRef?.emit('whatsapp:status', {
       message: 'STATUS: WHATSAPP AUTHENTICATED',
     });
@@ -263,9 +269,13 @@ async function requestPairingCode(phoneNumber) {
 async function sendMediaMessage({ phone, mediaPath, caption }) {
   await waitForReady();
   const normalized = normalizePhone(phone);
-  const numberId = await resolveWhatsAppNumberId(normalized);
-  const chatId = numberId._serialized;
-  const timeoutMs = Number(process.env.WHATSAPP_SEND_TIMEOUT_MS || 120000);
+  if (!/^[1-9]\d{8,14}$/.test(normalized)) {
+    const error = new Error('Invalid phone number. Use country code and no plus sign.');
+    error.code = 'WHATSAPP_INVALID_NUMBER';
+    throw error;
+  }
+  const chatId = `${normalized}@c.us`;
+  const timeoutMs = Number(process.env.WHATSAPP_SEND_TIMEOUT_MS || 150000);
   try {
     let sentMessage;
     if (!mediaPath) {
@@ -283,7 +293,9 @@ async function sendMediaMessage({ phone, mediaPath, caption }) {
       );
     }
 
-    await waitForMessageAck(sentMessage, Number(process.env.WHATSAPP_ACK_TIMEOUT_MS || 20000));
+    await waitForMessageAck(sentMessage, Number(process.env.WHATSAPP_ACK_TIMEOUT_MS || 8000)).catch((error) => {
+      console.warn(`Message accepted by WhatsApp Web but ack was not observed for ${normalized}: ${error.message}`);
+    });
     return sentMessage;
   } catch (error) {
     if (isProtocolTimeout(error)) {
@@ -299,26 +311,6 @@ async function sendMediaMessage({ phone, mediaPath, caption }) {
     }
     throw error;
   }
-}
-
-async function resolveWhatsAppNumberId(phone) {
-  const normalized = normalizePhone(phone);
-  if (!/^[1-9]\d{8,14}$/.test(normalized)) {
-    const error = new Error('Invalid phone number. Use country code and no plus sign.');
-    error.code = 'WHATSAPP_INVALID_NUMBER';
-    throw error;
-  }
-  const numberId = await withTimeout(
-    client.getNumberId(normalized),
-    Number(process.env.WHATSAPP_NUMBER_CHECK_TIMEOUT_MS || 25000),
-    'Could not confirm this number on WhatsApp.',
-  );
-  if (!numberId?._serialized) {
-    const error = new Error('This number is not available on WhatsApp.');
-    error.code = 'WHATSAPP_NUMBER_NOT_FOUND';
-    throw error;
-  }
-  return numberId;
 }
 
 function waitForMessageAck(message, timeoutMs) {
