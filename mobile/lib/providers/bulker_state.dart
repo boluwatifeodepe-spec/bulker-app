@@ -607,15 +607,21 @@ class BulkerState extends ChangeNotifier {
     total = data['total'] as int? ?? total;
     final contact = data['contact'] as Map<String, dynamic>?;
     if (contact != null) {
-      activity.insert(
-        0,
-        ActivityLog(
-          name: contact['name'] as String? ?? 'Contact',
-          phone: contact['phone'] as String? ?? '',
-          status: data['status'] as String? ?? 'sent',
-          timeLabel: 'Now',
-        ),
+      final phone = contact['phone'] as String? ?? '';
+      final existingIndex = activity.indexWhere((item) => item.phone == phone);
+      final item = ActivityLog(
+        name: contact['name'] as String? ?? 'Contact',
+        phone: phone,
+        status: data['status'] as String? ?? 'sent',
+        timeLabel: 'Now',
       );
+      if (existingIndex >= 0) {
+        activity
+          ..removeAt(existingIndex)
+          ..insert(0, item);
+      } else {
+        activity.insert(0, item);
+      }
     }
     notifyListeners();
   }

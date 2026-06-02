@@ -8,6 +8,7 @@ let initPromise;
 let initError;
 const readyWaiters = [];
 const loginWaiters = [];
+const ackWaiters = new Map();
 let loginAvailable = false;
 
 function timeoutError(message) {
@@ -121,6 +122,18 @@ function initWhatsApp(io) {
       message: `STATUS: WHATSAPP AUTH FAILED (${message})`,
       connected: false,
     });
+  });
+
+  client.on('message_ack', (message, ack) => {
+    const id = message?.id?.id || message?.id?._serialized;
+    if (!id) return;
+    const waiter = ackWaiters.get(id);
+    if (!waiter) return;
+    if (ack >= waiter.minimumAck) {
+      clearTimeout(waiter.timer);
+      ackWaiters.delete(id);
+      waiter.resolve({ message, ack });
+    }
   });
 
   client.on('disconnected', (reason) => {
@@ -249,22 +262,29 @@ async function requestPairingCode(phoneNumber) {
 
 async function sendMediaMessage({ phone, mediaPath, caption }) {
   await waitForReady();
-  const chatId = `${normalizePhone(phone)}@c.us`;
-  const timeoutMs = Number(process.env.WHATSAPP_SEND_TIMEOUT_MS || 75000);
+  const normalized = normalizePhone(phone);
+  const numberId = await resolveWhatsAppNumberId(normalized);
+  const chatId = numberId._serialized;
+  const timeoutMs = Number(process.env.WHATSAPP_SEND_TIMEOUT_MS || 120000);
   try {
+    let sentMessage;
     if (!mediaPath) {
-      return await withTimeout(
+      sentMessage = await withTimeout(
         client.sendMessage(chatId, caption),
         timeoutMs,
         'WhatsApp send timed out. Re-link WhatsApp and try again.',
       );
+    } else {
+      const media = MessageMedia.fromFilePath(mediaPath);
+      sentMessage = await withTimeout(
+        client.sendMessage(chatId, media, { caption }),
+        timeoutMs,
+        'WhatsApp media send timed out. Re-link WhatsApp and try again.',
+      );
     }
-    const media = MessageMedia.fromFilePath(mediaPath);
-    return await withTimeout(
-      client.sendMessage(chatId, media, { caption }),
-      timeoutMs,
-      'WhatsApp media send timed out. Re-link WhatsApp and try again.',
-    );
+
+    await waitForMessageAck(sentMessage, Number(process.env.WHATSAPP_ACK_TIMEOUT_MS || 20000));
+    return sentMessage;
   } catch (error) {
     if (isProtocolTimeout(error)) {
       await resetWhatsAppClient();
@@ -279,6 +299,45 @@ async function sendMediaMessage({ phone, mediaPath, caption }) {
     }
     throw error;
   }
+}
+
+async function resolveWhatsAppNumberId(phone) {
+  const normalized = normalizePhone(phone);
+  if (!/^[1-9]\d{8,14}$/.test(normalized)) {
+    const error = new Error('Invalid phone number. Use country code and no plus sign.');
+    error.code = 'WHATSAPP_INVALID_NUMBER';
+    throw error;
+  }
+  const numberId = await withTimeout(
+    client.getNumberId(normalized),
+    Number(process.env.WHATSAPP_NUMBER_CHECK_TIMEOUT_MS || 25000),
+    'Could not confirm this number on WhatsApp.',
+  );
+  if (!numberId?._serialized) {
+    const error = new Error('This number is not available on WhatsApp.');
+    error.code = 'WHATSAPP_NUMBER_NOT_FOUND';
+    throw error;
+  }
+  return numberId;
+}
+
+function waitForMessageAck(message, timeoutMs) {
+  const id = message?.id?.id || message?.id?._serialized;
+  if (!id || message?.ack >= 1) return Promise.resolve(message);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      ackWaiters.delete(id);
+      const error = new Error('WhatsApp did not confirm the message was sent. Try re-linking WhatsApp.');
+      error.code = 'WHATSAPP_ACK_TIMEOUT';
+      reject(error);
+    }, timeoutMs);
+    ackWaiters.set(id, {
+      minimumAck: 1,
+      timer,
+      resolve,
+      reject,
+    });
+  });
 }
 
 async function getWhatsAppContacts() {
@@ -323,6 +382,11 @@ async function getWhatsAppContacts() {
 }
 
 async function resetWhatsAppClient() {
+  for (const [id, waiter] of ackWaiters.entries()) {
+    clearTimeout(waiter.timer);
+    waiter.reject(new Error('WhatsApp engine reset before message was confirmed.'));
+    ackWaiters.delete(id);
+  }
   if (client) {
     await client.destroy().catch(() => {});
   }

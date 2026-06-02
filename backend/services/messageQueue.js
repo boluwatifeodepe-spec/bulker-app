@@ -11,12 +11,16 @@ const scheduledCampaigns = new Map();
 const dailyUsage = new Map();
 
 function safetyConfig() {
+  const configuredMinDelay = Number(process.env.MIN_MESSAGE_DELAY_MS || process.env.MESSAGE_DELAY_MS || 6000);
+  const configuredMaxDelay = Number(process.env.MAX_MESSAGE_DELAY_MS || 14000);
+  const configuredVideoMinDelay = Number(process.env.MIN_VIDEO_DELAY_MS || process.env.VIDEO_DELAY_MS || 12000);
+  const configuredVideoMaxDelay = Number(process.env.MAX_VIDEO_DELAY_MS || 25000);
   return {
     dailyLimit: Number(process.env.DAILY_SEND_LIMIT || 150),
-    minDelayMs: Number(process.env.MIN_MESSAGE_DELAY_MS || process.env.MESSAGE_DELAY_MS || 30000),
-    maxDelayMs: Number(process.env.MAX_MESSAGE_DELAY_MS || 90000),
-    videoMinDelayMs: Number(process.env.MIN_VIDEO_DELAY_MS || process.env.VIDEO_DELAY_MS || 45000),
-    videoMaxDelayMs: Number(process.env.MAX_VIDEO_DELAY_MS || 120000),
+    minDelayMs: Math.min(configuredMinDelay, 6000),
+    maxDelayMs: Math.min(configuredMaxDelay, 14000),
+    videoMinDelayMs: Math.min(configuredVideoMinDelay, 12000),
+    videoMaxDelayMs: Math.min(configuredVideoMaxDelay, 25000),
     stopAfterFailures: Number(process.env.STOP_AFTER_FAILURES || 8),
     stopFailureRate: Number(process.env.STOP_FAILURE_RATE || 0.55),
   };
