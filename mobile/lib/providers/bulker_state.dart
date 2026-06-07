@@ -42,7 +42,7 @@ class BulkerState extends ChangeNotifier {
   String pairingStatus = 'STATUS: WAITING FOR INPUT...';
   String? lastError;
   String? contactError;
-  String appVersion = '1.0.6';
+  String appVersion = '1.0.7';
   String profileName = 'Bulker User';
   String profilePhone = '';
   String? profilePhotoPath;
