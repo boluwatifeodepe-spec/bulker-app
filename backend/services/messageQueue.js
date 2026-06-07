@@ -11,16 +11,16 @@ const scheduledCampaigns = new Map();
 const dailyUsage = new Map();
 
 function safetyConfig() {
-  const configuredMinDelay = Number(process.env.MIN_MESSAGE_DELAY_MS || process.env.MESSAGE_DELAY_MS || 3000);
-  const configuredMaxDelay = Number(process.env.MAX_MESSAGE_DELAY_MS || 5000);
-  const configuredVideoMinDelay = Number(process.env.MIN_VIDEO_DELAY_MS || process.env.VIDEO_DELAY_MS || 5000);
-  const configuredVideoMaxDelay = Number(process.env.MAX_VIDEO_DELAY_MS || 9000);
+  const configuredMinDelay = boundedDelay(process.env.MIN_MESSAGE_DELAY_MS || process.env.MESSAGE_DELAY_MS, 3000, 5000, 3000);
+  const configuredMaxDelay = boundedDelay(process.env.MAX_MESSAGE_DELAY_MS, 3000, 5000, 5000);
+  const configuredVideoMinDelay = boundedDelay(process.env.MIN_VIDEO_DELAY_MS || process.env.VIDEO_DELAY_MS, 5000, 9000, 5000);
+  const configuredVideoMaxDelay = boundedDelay(process.env.MAX_VIDEO_DELAY_MS, 5000, 9000, 9000);
   return {
     dailyLimit: Number(process.env.DAILY_SEND_LIMIT || 250),
-    minDelayMs: clamp(configuredMinDelay, 3000, 5000),
-    maxDelayMs: clamp(configuredMaxDelay, 3000, 5000),
-    videoMinDelayMs: clamp(configuredVideoMinDelay, 5000, 9000),
-    videoMaxDelayMs: clamp(configuredVideoMaxDelay, 5000, 9000),
+    minDelayMs: configuredMinDelay,
+    maxDelayMs: configuredMaxDelay,
+    videoMinDelayMs: configuredVideoMinDelay,
+    videoMaxDelayMs: configuredVideoMaxDelay,
     retryAttempts: Number(process.env.MESSAGE_RETRY_ATTEMPTS || 2),
     retryDelayMs: Number(process.env.MESSAGE_RETRY_DELAY_MS || 5000),
     stopAfterFailures: Number(process.env.STOP_AFTER_FAILURES || 25),
@@ -28,9 +28,10 @@ function safetyConfig() {
   };
 }
 
-function clamp(value, min, max) {
-  if (!Number.isFinite(value)) return min;
-  return Math.max(min, Math.min(value, max));
+function boundedDelay(rawValue, min, max, fallback) {
+  const value = Number(rawValue);
+  if (!Number.isFinite(value) || value < min || value > max) return fallback;
+  return value;
 }
 
 function wait(ms) {
